@@ -62,7 +62,8 @@ export type SpeechDenial =
   | 'agent_grant_required' | 'agent_grant_revoked' | 'agent_grant_expired'
   | 'purpose_not_granted' | 'locale_not_granted' | 'style_not_granted'
   | 'provider_unavailable' | 'provider_capability_missing'
-  | 'locale_unverified' | 'style_unverified' | 'external_provider_not_approved';
+  | 'locale_unverified' | 'style_unverified' | 'external_provider_not_approved'
+  | 'authorization_unavailable' | 'cancelled';
 
 export type SpeechDecision =
   | { allowed: false; reason: SpeechDenial }
@@ -146,22 +147,35 @@ export type SpeechAudit = {
   reason?: SpeechDenial | 'adapter_failed';
 };
 
+/** Server-side adapter: the caller must never pass raw source voice audio to an agent. */
 export type SpeechAdapter = {
   backend: SpeechBackend;
-  synthesize(input: { privateVoiceRef: string; text: string; locale: string; style: SpeechStyle }): Promise<Uint8Array>;
+  synthesize(input: {
+    privateVoiceRef: string; text: string; locale: string; style: SpeechStyle; signal?: AbortSignal;
+  }): Promise<Uint8Array>;
 };
 
-/** Caller must supply a trusted audit sink and server-side configured synthesis adapter. */
+/** Must be resolved from trusted persistence, not an agent-supplied snapshot.
+ * Source audio, provider IDs and consent metadata remain private. */
+export type SpeechAuthorizationSnapshot = Pick<
+  AgentSpeechRequest, 'actor' | 'profile' | 'consent' | 'grant' | 'binding' | 'now'
+>;
+
+/** Mandatory audit and end-of-render permission check. No silent external-provider fallback.
+ * Callers must connect refreshAuthorization to trusted identity/voice persistence.
+ * Without it, generated audio is discarded (fail closed).
+ */
 export async function executeAgentSpeech(input: AgentSpeechRequest, dependencies: {
   audit: (event: SpeechAudit) => Promise<void>;
   adapter: SpeechAdapter;
+  refreshAuthorization?: () => Promise<SpeechAuthorizationSnapshot>;
+  signal?: AbortSignal;
 }): Promise<{ ok: true; audio: Uint8Array } | { ok: false; reason: SpeechDenial | 'adapter_failed' }> {
   const base = {
     actorId: input.actorId, consumerId: input.consumerId,
     profileId: input.profile.id, purpose: input.purpose
   };
   const decision = authorizeAgentSpeech(input);
-  // Mandatory preflight audit; no raw text or private provider IDs in the audit record.
   await dependencies.audit({ ...base, action: 'voice.agent.authorize',
     result: decision.allowed ? 'allowed' : 'denied',
     ...(!decision.allowed ? { reason: decision.reason } : {}) });
@@ -170,16 +184,50 @@ export async function executeAgentSpeech(input: AgentSpeechRequest, dependencies
     await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'provider_unavailable' });
     return { ok: false, reason: 'provider_unavailable' };
   }
+  if (dependencies.signal?.aborted) {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'cancelled' });
+    return { ok: false, reason: 'cancelled' };
+  }
+  let audio: Uint8Array;
   try {
-    const audio = await dependencies.adapter.synthesize({
+    audio = await dependencies.adapter.synthesize({
       privateVoiceRef: input.binding.privateVoiceRef,
-      text: input.text, locale: input.locale, style: input.style
+      text: input.text, locale: input.locale, style: input.style,
+      signal: dependencies.signal
     });
     if (!(audio instanceof Uint8Array) || audio.byteLength === 0) throw new Error('empty_audio');
-    await dependencies.audit({ ...base, action: 'voice.agent.synthesized', result: 'success' });
-    return { ok: true, audio };
   } catch {
     await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'adapter_failed' });
     return { ok: false, reason: 'adapter_failed' };
   }
+  if (dependencies.signal?.aborted) {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'cancelled' });
+    return { ok: false, reason: 'cancelled' };
+  }
+  let fresh: SpeechAuthorizationSnapshot;
+  try {
+    if (!dependencies.refreshAuthorization) throw new Error('authorization_refresh_required');
+    fresh = await dependencies.refreshAuthorization();
+    if (!fresh?.profile || !fresh?.actor || !fresh?.binding) throw new Error('incomplete_authorization');
+  } catch {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'authorization_unavailable' });
+    return { ok: false, reason: 'authorization_unavailable' };
+  }
+  if (dependencies.signal?.aborted) {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'cancelled' });
+    return { ok: false, reason: 'cancelled' };
+  }
+  if (fresh.profile.id !== input.profile.id || fresh.profile.ownerActorId !== input.profile.ownerActorId ||
+      fresh.binding.privateVoiceRef !== input.binding.privateVoiceRef ||
+      fresh.binding.backend !== input.binding.backend) {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: 'provider_unavailable' });
+    return { ok: false, reason: 'provider_unavailable' };
+  }
+  const liveDecision = authorizeAgentSpeech({ ...input, ...fresh });
+  if (!liveDecision.allowed) {
+    await dependencies.audit({ ...base, action: 'voice.agent.failed', result: 'failed', reason: liveDecision.reason });
+    return { ok: false, reason: liveDecision.reason };
+  }
+  await dependencies.audit({ ...base, action: 'voice.agent.synthesized', result: 'success' });
+  return { ok: true, audio };
 }
