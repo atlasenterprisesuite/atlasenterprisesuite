@@ -35,16 +35,27 @@ describe('ATLAS NOAA active alerts — normalized evidence only', () => {
     expect(result.alerts[0].source.provider).toBe('NOAA/NWS');
     expect(result.alerts[0].mayPublishAlert).toBe(false);
   });
-  it('keeps the distinction between no official active alerts and rejected records', () => {
+  it('keeps the distinction between no official alerts and active long-lived warnings', () => {
     const noAlerts = normalizeNoaaActiveAlerts(feed([]), ctx());
     expect(noAlerts.status).toBe('complete');
     expect(noAlerts.providerCount).toBe(0);
-    const stale = feature(); stale.properties.sent = '2026-11-16T09:00:00-05:00';
-    const partial = normalizeNoaaActiveAlerts(feed([stale]), ctx());
-    expect(partial.status).toBe('partial');
-    expect(partial.alerts).toHaveLength(0);
-    expect(partial.rejectedCount).toBe(1);
-    expect(partial.providerCount).toBe(1);
+    const longLived = feature();
+    longLived.properties.sent = '2026-11-16T09:00:00-05:00';
+    const active = normalizeNoaaActiveAlerts(feed([longLived]), ctx());
+    expect(active.status).toBe('complete');
+    expect(active.alerts).toHaveLength(1);
+    expect(active.rejectedCount).toBe(0);
+    expect(active.providerCount).toBe(1);
+    expect(active.alerts[0].mayPublishAlert).toBe(false);
+  });
+  it('rejects an expired long-lived alert as partial, never declaring conditions clear', () => {
+    const expired = feature();
+    expired.properties.sent = '2026-11-16T09:00:00-05:00';
+    expired.properties.expires = '2026-11-26T08:00:00-05:00';
+    const result = normalizeNoaaActiveAlerts(feed([expired]), ctx());
+    expect(result.status).toBe('partial');
+    expect(result.rejectedCount).toBe(1);
+    expect(result.alerts).toHaveLength(0);
   });
   it('rejects test and cancelled messages, not silently declaring clear conditions', () => {
     const test = feature(); test.properties.status = 'Test';
