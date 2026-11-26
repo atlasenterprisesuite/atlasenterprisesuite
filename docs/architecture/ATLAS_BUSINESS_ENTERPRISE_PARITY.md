@@ -90,6 +90,68 @@ and the Work API rather than introducing a billing/identity silo.
   including revocation, invalid sessions and cross-organization attempts.
 - This branch is **NO-GO** until the existing exact-SHA P0 release gates pass.
 
+## Increment 003 — atomic credit ledger candidate (2026-11-26)
+
+**Isolated PostgreSQL 17 evidence:** workflow run
+https://github.com/atlasenterprisesuite/atlasenterprisesuite/actions/runs/45815754769
+passed on commit 6ca1a18f9bb8076d6d1d9a405416a2e9a62234d5.
+Tests created the candidate schema with synthetic users/organizations/tasks,
+verified RLS and no direct authenticated grants, negative membership tests,
+partial settle/refund, strict verified execution evidence, immutable audit
+records and process-level races (two competing requests and duplicated keys).
+This is isolated test evidence, not production migration evidence.
+
+**Source of truth:** supabase/schema/atlas_enterprise_credit_ledger.sql is a
+review candidate, NOT a deployed migration. No standalone billing provider,
+second identity store or mutable client-owned quota source was introduced.
+The optional ledger is scoped by the existing organization and authenticated
+user; only service_role has DB write / RPC permissions. The user must never
+be able to invoke ledger mutating functions directly.
+
+SQL operations:
+- atlas_enterprise_credit_set_limit: verified org admin/owner allocation; default
+  disabled; reduction cannot undercut existing consumption and reservations
+- atlas_enterprise_credit_reserve: account-row FOR UPDATE + unique request key,
+  real task ownership and live membership checks, single-transaction audit
+- atlas_enterprise_credit_settle: verified execution_evidence, partial refund,
+  single-transaction reserve-to-spent transfer and immutable event
+- atlas_enterprise_credit_release: idempotent cancellation even after
+  membership revocation; same-transaction audit
+- ledger event rows are append-only by trigger; no direct end-user grants
+
+Read-only integration:
+- Existing atlas-execution Edge session context resolves the actor from a
+  validated JWT and active organization membership.
+- get_enterprise_credit_status reads the actor's UTC-month account through a
+  server-only database adapter, never accepting user_id, limits, flags or
+  balances from the caller. Any malformed accounting data fails closed.
+- /work/policies displays actual historical AI records and (when exposed)
+  ledger allocation status separately. paidExecutionEnabled remains hardcoded
+  false independent of account availability.
+
+Important: a PostgreSQL credit reservation is NOT permission to execute a paid
+AI request. The canonical action policy, approval, cost, provider-readiness and
+execution evidence gates are independently mandatory. **No provider debit
+adapter is wired in this increment.**
+
+### Remaining P0
+
+1. Generate and review a versioned migration with the installed Supabase CLI.
+   Do not apply the candidate DDL to production before isolated RLS and
+   integration verification; verify deployed schema and locked-down grants.
+2. Connect the canonical orchestration transaction to reservation/finalization
+   with idempotent reconciliation for worker failure, timeouts and retries.
+3. Authenticated live E2E for session revocation, cross-tenant data isolation,
+   user-group and organization membership expiry, API endpoint compatibility,
+   real persistence and audit without exposing service keys.
+4. Update this PR against current main and pass all mandatory checks at the
+   exact final head SHA; review, merge, Cloudflare deploy and E2E must pass.
+5. SSO, shared-workspace CRUD, simultaneous editing, self-hosted VPC install
+   and contractual SLA remain distinct incomplete product capabilities.
+
+**P0 release decision: NO-GO**. The synthetic PG17 PASS must not be treated
+as proof that users can spend credits or that the system is deployed.
+
 ## Next increments and acceptance
 
 1. **P0:** Inspect the existing Supabase execution and identity tables/RLS; identify
