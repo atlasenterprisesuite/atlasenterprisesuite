@@ -356,7 +356,7 @@ async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
   try {
     // Reuse ATLAS identity, verified active organization membership, and RBAC.
     const ctx = await urbanTwinContext(req);
-    await urbanTwinPermission(ctx, 'city.twin.manage');
+    await urbanTwinPermission(ctx, 'climate.read');
     const latText = endpoint.searchParams.get('latitude') || '';
     const lonText = endpoint.searchParams.get('longitude') || '';
     const decimal = /^-?\d{1,3}(?:\.\d{1,6})?$/;
@@ -365,6 +365,14 @@ async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
     const longitude = Number(lonText);
     if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 ||
         !Number.isFinite(longitude) || Math.abs(longitude) > 180) return urbanTwinFail(req, 'invalid_coordinates', 422);
+
+    // One durable organization-wide quota reservation and audit, before upstream calls.
+    // The RPC executes as service_role only after ATLAS user and RBAC checks.
+    const { data: slotGranted, error: slotError } = await adminClient().rpc(
+      'atlas_climate_acquire_read_slot', { p_org_id: ctx.orgId, p_user_id: ctx.userId }
+    );
+    if (slotError) return urbanTwinFail(req, 'climate_gate_unavailable', 503);
+    if (slotGranted !== true) return urbanTwinFail(req, 'climate_provider_rate_limited', 429);
 
     // Fixed destination, bounded request; never accept a provider URL from the caller.
     const point = latitude.toFixed(4) + ',' + longitude.toFixed(4);
@@ -407,13 +415,22 @@ async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
     const normalized = normalizeNoaaActiveAlerts(raw, {
       latitude, longitude, fetchedAt: new Date().toISOString(), sourceUrl
     });
-    // Audit counts only: no locations or raw alert contents in logs.
-    await urbanTwinAudit(ctx, 'climate.noaa.read', 'climate_noaa_external', null, {
-      provider_count: normalized.providerCount,
-      reviewable_count: normalized.alerts.length,
-      rejected_count: normalized.rejectedCount,
-      truncated: normalized.truncated
+    // Complete read audit is mandatory: no response data is served if persistence fails.
+    // Never log the user's coordinates or raw provider payload.
+    const { error: completionAuditError } = await adminClient().from('audit_logs').insert({
+      org_id: ctx.orgId,
+      user_id: ctx.userId,
+      action: 'climate.noaa.read.completed',
+      table_name: 'climate_noaa_external',
+      record_id: null,
+      new_data: {
+        provider_count: normalized.providerCount,
+        reviewable_count: normalized.alerts.length,
+        rejected_count: normalized.rejectedCount,
+        truncated: normalized.truncated
+      }
     });
+    if (completionAuditError) return urbanTwinFail(req, 'climate_audit_unavailable', 503);
     return urbanTwinJson(req, { ok: true, domain: 'climate', ...normalized });
   } catch (error) {
     const reason = error instanceof Error ? error.message : '';
