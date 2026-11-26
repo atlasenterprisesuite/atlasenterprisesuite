@@ -13,6 +13,7 @@ import { RequireAtlasIdentity } from './identity/RequireAtlasIdentity';
 import { SocialPublisherPage } from './modules/business/social/SocialPublisherPage';
 import { NetworkPublicPage } from './modules/business/network/NetworkPublicPage';
 import { AutomotiveSalesReportingPage } from './modules/finance/accounting/AutomotiveSalesReportingPage';
+import { AutomotiveIntelligencePage } from './modules/automotive/AutomotiveIntelligencePage';
 import { PayablesPage } from './modules/finance/accounting/PayablesPage';
 import { AtlasPayPage } from './modules/finance/pay/AtlasPayPage';
 import { PublicAtlasPayPage } from './modules/finance/pay/PublicAtlasPayPage';
@@ -64,6 +65,7 @@ function EnterpriseHome() {
     <section className="page-stack">
       <PageHeader eyebrow="ATLAS Enterprise Suite" title="One governed enterprise ecosystem" description="Finance, Payroll and Health share one shell, route graph, permission boundary and verification pipeline." />
       <div className="module-grid">
+        <Link className="module-card enabled" to="/automotive"><span>Mobility · Research · Evidence</span><strong>ATLAS Automotive Intelligence</strong><p>Comparación documentada de vehículos, foto local y ficha técnica exportable.</p></Link>
         <Link className="module-card enabled" to="/chronos"><span>Science · History · Evidence</span><strong>ATLAS CHRONOS OS</strong><p>Explore the universal research catalog, source registry and timeline.</p></Link>
         <Link className="module-card enabled" to="/business"><span>Business</span><strong>Business Suite</strong><p>Growth operations, multi-platform creative preparation and governed publishing connections.</p></Link>
         <Link className="module-card enabled" to="/finance"><span>Business</span><strong>Finance</strong><p>Accounting operations with live Accounts Payable, Accounts Receivable and governed financial reporting.</p></Link>
@@ -326,6 +328,7 @@ export function App() {
         <Route path="/finance/accounting/reconciliation" element={<BankReconciliationPage />} />
         <Route path="/finance/accounting/accounts-receivable" element={<RequireAtlasIdentity><ReceivablesPage /></RequireAtlasIdentity>} />
         <Route path="/inventory/procure-to-pay" element={<RequireAtlasIdentity><ProcureToPayPage /></RequireAtlasIdentity>} />
+        <Route path="/automotive" element={<AutomotiveIntelligencePage />} />
         <Route path="/finance/accounting/reports/automotive-sales" element={<AutomotiveSalesReportingPage />} />
         <Route path="/tax/*" element={<TaxRoutes />} />
         <Route path="/payroll/*" element={<PayrollRoutes />} />
