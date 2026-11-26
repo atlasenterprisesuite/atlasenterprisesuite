@@ -188,13 +188,13 @@ $$;
 -- Settlement requires verified authoritative evidence linked to that exact
 -- execution task and organization. Partial settlement refunds the remainder.
 create or replace function public.atlas_enterprise_credit_settle(
-  p_reservation_id uuid, p_charged bigint, p_evidence_id uuid
+  p_reservation_id uuid, p_charged bigint, p_evidence_id uuid, p_operator_id uuid
 ) returns uuid language plpgsql security invoker set search_path = '' as $$
 declare
   snapshot public.atlas_enterprise_credit_reservations%rowtype;
   r public.atlas_enterprise_credit_reservations%rowtype;
 begin
-  if p_reservation_id is null or p_evidence_id is null or p_charged is null or p_charged < 0 then
+  if p_reservation_id is null or p_evidence_id is null or p_operator_id is null or p_charged is null or p_charged < 0 then
     raise exception 'enterprise_credit_invalid_settlement' using errcode='P0001';
   end if;
   select * into snapshot from public.atlas_enterprise_credit_reservations
@@ -206,6 +206,11 @@ begin
   where org_id=snapshot.org_id and user_id=snapshot.user_id and window_id=snapshot.window_id
   for update;
   select * into r from public.atlas_enterprise_credit_reservations where id=p_reservation_id for update;
+  if not exists (
+    select 1 from public.organization_members where org_id=r.org_id
+      and user_id=p_operator_id and status='active'
+      and (user_id=r.user_id or role in ('owner','admin','platform_admin'))
+  ) then raise exception 'enterprise_credit_operator_denied' using errcode='P0001'; end if;
   if r.status = 'settled' then
     if r.settled_credits=p_charged and r.evidence_id=p_evidence_id then return r.id; end if;
     raise exception 'enterprise_credit_settlement_conflict' using errcode='P0001';
@@ -231,7 +236,7 @@ begin
    where id=r.id;
   insert into public.atlas_enterprise_credit_events
     (org_id,user_id,window_id,reservation_id,operation,amount_credits,actor_user_id,request_key)
-  values (r.org_id,r.user_id,r.window_id,r.id,'settled',p_charged,r.user_id,r.request_key);
+  values (r.org_id,r.user_id,r.window_id,r.id,'settled',p_charged,p_operator_id,r.request_key);
   return r.id;
 end;
 $$;
@@ -240,13 +245,13 @@ $$;
 -- users cannot indefinitely consume allocations. Only trusted service_role
 -- callers can perform it, and the release is journaled in the same transaction.
 create or replace function public.atlas_enterprise_credit_release(
-  p_reservation_id uuid
+  p_reservation_id uuid, p_operator_id uuid
 ) returns uuid language plpgsql security invoker set search_path = '' as $$
 declare
   snapshot public.atlas_enterprise_credit_reservations%rowtype;
   r public.atlas_enterprise_credit_reservations%rowtype;
 begin
-  if p_reservation_id is null then
+  if p_reservation_id is null or p_operator_id is null then
     raise exception 'enterprise_credit_invalid_release' using errcode='P0001';
   end if;
   select * into snapshot from public.atlas_enterprise_credit_reservations where id=p_reservation_id;
@@ -254,6 +259,11 @@ begin
   perform 1 from public.atlas_enterprise_credit_accounts
   where org_id=snapshot.org_id and user_id=snapshot.user_id and window_id=snapshot.window_id for update;
   select * into r from public.atlas_enterprise_credit_reservations where id=p_reservation_id for update;
+  if not exists (
+    select 1 from public.organization_members where org_id=r.org_id
+      and user_id=p_operator_id and status='active'
+      and (user_id=r.user_id or role in ('owner','admin','platform_admin'))
+  ) then raise exception 'enterprise_credit_operator_denied' using errcode='P0001'; end if;
   if r.status='released' then return r.id; end if;
   if r.status<>'reserved' then
     raise exception 'enterprise_credit_release_conflict' using errcode='P0001';
@@ -265,7 +275,7 @@ begin
      set status='released',resolved_at=now() where id=r.id;
   insert into public.atlas_enterprise_credit_events
     (org_id,user_id,window_id,reservation_id,operation,amount_credits,actor_user_id,request_key)
-  values (r.org_id,r.user_id,r.window_id,r.id,'released',r.requested_credits,r.user_id,r.request_key);
+  values (r.org_id,r.user_id,r.window_id,r.id,'released',r.requested_credits,p_operator_id,r.request_key);
   return r.id;
 end;
 $$;
@@ -274,9 +284,9 @@ $$;
 -- cannot invoke these functions or write/see the ledger directly.
 revoke all on function public.atlas_enterprise_credit_set_limit(uuid,uuid,text,bigint,boolean,uuid) from PUBLIC, anon, authenticated;
 revoke all on function public.atlas_enterprise_credit_reserve(uuid,uuid,text,text,uuid,bigint) from PUBLIC, anon, authenticated;
-revoke all on function public.atlas_enterprise_credit_settle(uuid,bigint,uuid) from PUBLIC, anon, authenticated;
-revoke all on function public.atlas_enterprise_credit_release(uuid) from PUBLIC, anon, authenticated;
+revoke all on function public.atlas_enterprise_credit_settle(uuid,bigint,uuid,uuid) from PUBLIC, anon, authenticated;
+revoke all on function public.atlas_enterprise_credit_release(uuid,uuid) from PUBLIC, anon, authenticated;
 grant execute on function public.atlas_enterprise_credit_set_limit(uuid,uuid,text,bigint,boolean,uuid) to service_role;
 grant execute on function public.atlas_enterprise_credit_reserve(uuid,uuid,text,text,uuid,bigint) to service_role;
-grant execute on function public.atlas_enterprise_credit_settle(uuid,bigint,uuid) to service_role;
-grant execute on function public.atlas_enterprise_credit_release(uuid) to service_role;
+grant execute on function public.atlas_enterprise_credit_settle(uuid,bigint,uuid,uuid) to service_role;
+grant execute on function public.atlas_enterprise_credit_release(uuid,uuid) to service_role;
