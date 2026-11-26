@@ -62,7 +62,8 @@ describe('ATLAS 777 Voice Agent governance', () => {
   it('audits before synthesis without exposing private text/voice references',async()=>{
     const events: unknown[]=[];
     const adapter={backend:'atlas_local' as const,synthesize:vi.fn(async()=>new Uint8Array([1,2]))};
-    expect(await executeAgentSpeech(fixture(),{adapter,audit:async event=>{events.push(event)}}))
+    const state=fixture();
+    expect(await executeAgentSpeech(state,{adapter,audit:async event=>{events.push(event)},refreshAuthorization:refresh(state)}))
       .toEqual({ok:true,audio:new Uint8Array([1,2])});
     expect(adapter.synthesize).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(events)).not.toContain('private:voice-1');
@@ -79,5 +80,64 @@ describe('ATLAS 777 Voice Agent governance', () => {
     const empty={backend:'atlas_local' as const,synthesize:vi.fn(async()=>new Uint8Array())};
     expect(await executeAgentSpeech(fixture(),{adapter:empty,audit:async()=>{}}))
       .toEqual({ok:false,reason:'adapter_failed'});
+  });
+});
+
+function refresh(state: AgentSpeechRequest, now='2026-11-26T12:00:01Z') {
+  return async () => ({actor:state.actor,profile:state.profile,consent:state.consent,
+    grant:state.grant,binding:state.binding,now});
+}
+
+describe('ATLAS 777 Voice Agent — during-generation revocation gate',()=>{
+  it('discards completed speech if consent is revoked during generation',async()=>{
+    const state=fixture();
+    const events:unknown[]=[];
+    const adapter={backend:'atlas_local' as const,synthesize:vi.fn(async()=>{
+      state.consent!.revokedAt='2026-11-26T12:00:01Z';
+      return new Uint8Array([1,2,3]);
+    })};
+    expect(await executeAgentSpeech(state,{adapter,audit:async e=>{events.push(e)},refreshAuthorization:refresh(state)}))
+      .toEqual({ok:false,reason:'consent_revoked'});
+    expect(adapter.synthesize).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(events)).not.toContain('private:voice-1');
+  });
+  it('discards speech when an agent grant expires before delivery',async()=>{
+    const state=fixture();
+    const adapter={backend:'atlas_local' as const,synthesize:async()=>new Uint8Array([1])};
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{},refreshAuthorization:refresh(state,'2027-02-01T00:00:00Z')}))
+      .toEqual({ok:false,reason:'agent_grant_expired'});
+  });
+  it('fails closed when trusted permission reload is missing or unavailable',async()=>{
+    const state=fixture();
+    const adapter={backend:'atlas_local' as const,synthesize:async()=>new Uint8Array([1])};
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{}}))
+      .toEqual({ok:false,reason:'authorization_unavailable'});
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{},refreshAuthorization:async()=>{throw new Error('storage unavailable')}}))
+      .toEqual({ok:false,reason:'authorization_unavailable'});
+  });
+  it('discards speech when AbortSignal is triggered during synthesis',async()=>{
+    const state=fixture();const controller=new AbortController();
+    const adapter={backend:'atlas_local' as const,synthesize:async()=>{
+      controller.abort();return new Uint8Array([1]);
+    }};
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{},signal:controller.signal,refreshAuthorization:refresh(state)}))
+      .toEqual({ok:false,reason:'cancelled'});
+  });
+  it('rejects output after voice-binding or organization switches',async()=>{
+    const state=fixture();
+    const adapter={backend:'atlas_local' as const,synthesize:async()=>new Uint8Array([1])};
+    const switched=fixture();switched.binding!.privateVoiceRef='private:other-voice';
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{},refreshAuthorization:refresh(switched)}))
+      .toEqual({ok:false,reason:'provider_unavailable'});
+    const crossed=fixture();crossed.actor.scope.organizationId='other-org';
+    expect(await executeAgentSpeech(state,{adapter,audit:async()=>{},refreshAuthorization:refresh(crossed)}))
+      .toEqual({ok:false,reason:'scope_mismatch'});
+  });
+  it('delivers audio when the refreshed consent and grant remain valid',async()=>{
+    const state=fixture();const events:unknown[]=[];
+    const adapter={backend:'atlas_local' as const,synthesize:async()=>new Uint8Array([4,5])};
+    expect(await executeAgentSpeech(state,{adapter,audit:async e=>{events.push(e)},refreshAuthorization:refresh(state)}))
+      .toEqual({ok:true,audio:new Uint8Array([4,5])});
+    expect(events).toHaveLength(2);
   });
 });
