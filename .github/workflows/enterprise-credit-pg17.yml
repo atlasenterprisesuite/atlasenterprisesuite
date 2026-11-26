@@ -1,0 +1,66 @@
+name: ATLAS Enterprise Credit Ledger — PostgreSQL 17 TDD
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/schema/atlas_enterprise_credit_ledger.sql'
+      - 'tests/pg/enterprise-credit-*'
+      - '.github/workflows/enterprise-credit-pg17.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-credit-pg17-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enterprise-ledger-pg17:
+    name: Enterprise Credit Ledger PG17
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-ephemeral-test-only
+          POSTGRES_DB: atlas_ledger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_ledger_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: ci-ephemeral-test-only
+      PGDATABASE: atlas_ledger_test
+      PGCONNECT_TIMEOUT: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL 17 and client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql -X -v ON_ERROR_STOP=1 -qAt -c "show server_version" | grep '^17\.'
+      - name: Synthetic schema and strict DDL/RLS
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f tests/pg/enterprise-credit-fixtures.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/schema/atlas_enterprise_credit_ledger.sql
+      - name: Atomic lifecycle, negative authorization, audit and idempotency
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/pg/enterprise-credit-ledger.test.sql
+      - name: Independent-process concurrency and double-reservation checks
+        run: bash tests/pg/enterprise-credit-concurrency.sh
+      - name: Publish truthful verification summary
+        if: always()
+        run: |
+          echo "ATLAS Enterprise ledger: isolated PostgreSQL 17 test run." >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow does not deploy the schema or enable paid providers." >> "$GITHUB_STEP_SUMMARY"

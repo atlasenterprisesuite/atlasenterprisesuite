@@ -181,3 +181,124 @@ export async function enrollWorkRuntime(input: { kind: WorkRuntimeSummary['kind'
   if (!runtime || !runtimeToken) throw new Error('work_runtime_enroll_response_invalid');
   return { runtime, runtimeToken };
 }
+
+/**
+ * Records observed this UTC month. These are historical events — not credits
+ * and not a complete cost ledger. Never use this response to authorize spend.
+ */
+export type EnterpriseUsageEvent = {
+  id: string;
+  createdAt: string;
+  taskClass: string | null;
+  status: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  estimatedCostUsd: string | null;
+};
+
+export type EnterpriseUsageReport = {
+  source: 'atlas_ai_usage';
+  period: string;
+  eventCount: number;
+  sampleIsComplete: boolean;
+  recentEvents: EnterpriseUsageEvent[];
+  creditLimitStatus: 'unconfigured';
+  creditsRemaining: null;
+  paidExecutionEnabled: false;
+};
+
+function validTokens(value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0);
+}
+
+export async function getEnterpriseUsage(): Promise<EnterpriseUsageReport> {
+  const data = await workPost({ operation: 'get_enterprise_usage' });
+  const report = record(data.report);
+  if (data.ok !== true ||
+      report.source !== 'atlas_ai_usage' ||
+      typeof report.period !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(report.period) ||
+      !Number.isSafeInteger(report.eventCount) || report.eventCount < 0 ||
+      typeof report.sampleIsComplete !== 'boolean' ||
+      !Array.isArray(report.recentEvents) || report.recentEvents.length > 20 ||
+      report.recentEvents.length > report.eventCount ||
+      report.creditLimitStatus !== 'unconfigured' || report.creditsRemaining !== null ||
+      report.paidExecutionEnabled !== false) {
+    throw new Error('enterprise_usage_response_invalid');
+  }
+  const events: EnterpriseUsageEvent[] = rows(report.recentEvents).map((event) => {
+    if (typeof event.id !== 'string' || !event.id ||
+        typeof event.createdAt !== 'string' || !Number.isFinite(Date.parse(event.createdAt)) ||
+        (event.taskClass !== null && typeof event.taskClass !== 'string') ||
+        (event.status !== null && typeof event.status !== 'string') ||
+        !validTokens(event.inputTokens) || !validTokens(event.outputTokens) ||
+        (event.estimatedCostUsd !== null &&
+          (typeof event.estimatedCostUsd !== 'string' || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(event.estimatedCostUsd)))) {
+      throw new Error('enterprise_usage_event_invalid');
+    }
+    return {
+      id: event.id,
+      createdAt: event.createdAt,
+      taskClass: event.taskClass,
+      status: event.status,
+      inputTokens: event.inputTokens,
+      outputTokens: event.outputTokens,
+      estimatedCostUsd: event.estimatedCostUsd
+    };
+  });
+  if (events.length !== report.recentEvents.length || (report.sampleIsComplete && events.length !== report.eventCount)) {
+    throw new Error('enterprise_usage_event_count_invalid');
+  }
+  return {
+    source: 'atlas_ai_usage',
+    period: report.period,
+    eventCount: report.eventCount,
+    sampleIsComplete: report.sampleIsComplete,
+    recentEvents: events,
+    creditLimitStatus: 'unconfigured',
+    creditsRemaining: null,
+    paidExecutionEnabled: false
+  };
+}
+
+/** Server-observed ledger status. A credit allocation never permits spending. */
+export type EnterpriseCreditStatus = {
+  source: 'atlas_enterprise_credit_accounts';
+  status: 'not_installed' | 'unconfigured' | 'disabled' | 'allocated';
+  period: string;
+  limitCredits: number | null;
+  reservedCredits: number | null;
+  spentCredits: number | null;
+  availableCredits: number | null;
+  paidExecutionEnabled: false;
+};
+
+export async function getEnterpriseCreditStatus(): Promise<EnterpriseCreditStatus> {
+  const response = await workPost({ operation: 'get_enterprise_credit_status' });
+  const value = record(response.credit);
+  const statuses = ['not_installed', 'unconfigured', 'disabled', 'allocated'];
+  if (response.ok !== true || value.source !== 'atlas_enterprise_credit_accounts' ||
+      !statuses.includes(value.status) || typeof value.period !== 'string' ||
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(value.period) || value.paidExecutionEnabled !== false) {
+    throw new Error('enterprise_credit_status_invalid');
+  }
+  const fields = ['limitCredits', 'reservedCredits', 'spentCredits', 'availableCredits'] as const;
+  if (value.status !== 'disabled' && value.status !== 'allocated') {
+    if (fields.some((field) => value[field] !== null)) {
+      throw new Error('enterprise_credit_unconfigured_balance_invalid');
+    }
+  } else {
+    if (fields.some((field) => !Number.isSafeInteger(value[field]) || value[field] < 0) ||
+        value.limitCredits !== value.reservedCredits + value.spentCredits + value.availableCredits) {
+      throw new Error('enterprise_credit_balance_invalid');
+    }
+  }
+  return {
+    source: 'atlas_enterprise_credit_accounts', status: value.status,
+    period: value.period,
+    limitCredits: value.limitCredits,
+    reservedCredits: value.reservedCredits,
+    spentCredits: value.spentCredits,
+    availableCredits: value.availableCredits,
+    paidExecutionEnabled: false
+  };
+}
