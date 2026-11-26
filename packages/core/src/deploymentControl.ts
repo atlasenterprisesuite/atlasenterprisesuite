@@ -333,3 +333,74 @@ export function evaluateAtlasSovereignDeployReadiness(input: {
     providerStates
   };
 }
+
+/**
+ * Restricted write entry point: create a RELEASE DRAFT only. The caller must
+ * supply the actual built artifact SHA-256 separately from its Git source SHA.
+ * No fabricated artifact, deployment, CI result or verified evidence.
+ */
+export type AtlasSovereignReleaseDraftInput = {
+  releaseKey: string;
+  version: string;
+  channel: 'development' | 'staging' | 'production';
+  sourceSha: string;
+  artifactSha256: string;
+};
+
+export function buildAtlasSovereignReleaseDraft(input: AtlasSovereignReleaseDraftInput) {
+  const releaseKey = input.releaseKey.trim();
+  const version = input.version.trim();
+  const sourceSha = input.sourceSha.trim().toLowerCase();
+  const artifactSha256 = input.artifactSha256.trim().toLowerCase();
+
+  if (!/^[a-z0-9._-]{3,160}$/i.test(releaseKey)) throw new Error('invalid_release_key');
+  if (!version || version.length > 100) throw new Error('invalid_release_version');
+  if (!['development', 'staging', 'production'].includes(input.channel)) {
+    throw new Error('invalid_release_channel');
+  }
+  if (!SHA40.test(sourceSha)) throw new Error('invalid_source_sha');
+  if (!/^[a-f0-9]{64}$/.test(artifactSha256) || /^0+$/.test(artifactSha256)) {
+    throw new Error('invalid_artifact_sha256');
+  }
+
+  return {
+    release_key: releaseKey,
+    version,
+    channel: input.channel,
+    source_ref: sourceSha,
+    notes: 'Unverified artifact digest supplied for draft review. Not deployed or production verified.',
+    metadata: { github_ci_required: true },
+    components: [{
+      component_type: 'web_bundle',
+      component_key: 'atlas-enterprise-suite-web',
+      artifact_ref: null,
+      artifact_sha256: artifactSha256,
+      target_version: version,
+      provider: 'cloudflare',
+      deployment_order: 100,
+      rollback_strategy: 'manual_only',
+      rollback_ref: null,
+      requires_migration: false,
+      migration_ref: null,
+      metadata: {}
+    }]
+  };
+}
+
+/** Client defense-in-depth; the server rechecks authenticated releases.create. */
+export function canWriteAtlasSovereignReleaseDraft(input: {
+  organizationId: string;
+  infra: AtlasSovereignInfraSnapshot | null;
+  granted: boolean;
+  now: number;
+}): boolean {
+  const { infra, organizationId, granted, now } = input;
+  if (!granted || !organizationId.trim() || !infra) return false;
+  if (infra.scope?.organization_id !== organizationId) return false;
+  if (infra.canonical_repository !== 'atlasenterprisesuite/atlasenterprisesuite') return false;
+  const checkedAt = Date.parse(infra.evidence?.generated_at ?? '');
+  const age = now - checkedAt;
+  if (!Number.isFinite(now) || !Number.isFinite(checkedAt) || age < -120_000 || age > 15 * 60_000) return false;
+  // A blocked provider must not block local draft work; it still blocks deploy.
+  return true;
+}
