@@ -8,7 +8,7 @@ const models = {
   deep: 'muse-glimmer-30b',
 };
 
-function fakeRuntime({advertised=Object.values(models),modelsStatus=200,malformed=false}={}){
+function fakeRuntime({advertised=Object.values(models),modelsStatus=200,malformed=false,responseModel=undefined}={}){
   const requests=[];
   const fetchFn=async (url,options={})=>{
     const path=new URL(url).pathname;
@@ -19,7 +19,7 @@ function fakeRuntime({advertised=Object.values(models),modelsStatus=200,malforme
       {status:modelsStatus}
     );
     if(path==='/v1/responses')return new Response(JSON.stringify({
-      id:'local-response',model:JSON.parse(options.body).model,
+      id:'local-response',model:responseModel===undefined?JSON.parse(options.body).model:responseModel,
       output:[{content:[{type:'output_text',text:'synthetic-ok'}]}],
     }),{status:200});
     throw new Error('Unexpected runtime path: '+path);
@@ -76,6 +76,21 @@ test('malformed or unavailable model catalogs cannot verify a private model',asy
       error=>['provider_verification_required','provider_unavailable'].includes(error?.code),
     );
     assert.equal(requests.some(r=>r.path==='/v1/responses'),false);
+  }
+});
+
+test('strict mode rejects actual responses from a different or unidentified model',async()=>{
+  for(const returnedId of ['muse-glimmer-30b',null]){
+    const {adapter,requests}=fakeRuntime({responseModel:returnedId});
+    await assert.rejects(
+      adapter.execute({
+        route:{profile:'balanced',capabilities:['generation']},
+        input:[{role:'user',content:'synthetic only'}],
+      }),
+      error=>error?.code==='provider_verification_required' && error?.status===503,
+    );
+    assert.equal(requests.filter(r=>r.path==='/v1/responses').length,1);
+    assert.equal(requests.every(r=>r.path!=='/v1/responses'||JSON.parse(r.body).model==='gpt-oss-20b'),true);
   }
 });
 
