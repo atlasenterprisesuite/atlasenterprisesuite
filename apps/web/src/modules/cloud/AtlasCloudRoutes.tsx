@@ -5,6 +5,7 @@ import { AtlasCloudApiExplorer, AtlasCloudObservability, AtlasCloudResourceManag
 import { AtlasCloudProductionVerification } from './AtlasCloudProductionVerification';
 import { AtlasRuntimeIntegrityPage } from './AtlasRuntimeIntegrityPage';
 import { AtlasCloudDomains } from './AtlasCloudDomains';
+import { AtlasVersePage } from './AtlasVersePage';
 import { AtlasCloudFinOps, AtlasCloudIamPolicy, AtlasCloudReliability, AtlasCloudReleaseCenter, AtlasCloudSecretsConfig, AtlasCloudServiceGraph } from './AtlasCloudOperations';
 import { atlasCloudTruthBadge } from './truthStatus';
 
@@ -260,6 +261,10 @@ function ConsoleHome() {
           <span>Integrity</span><strong>Production Verification</strong>
           <p>Verify security, build, deployment, runtime and exact-SHA evidence without fabricating green state.</p>
         </Link>
+        <Link to="/cloud/verse">
+          <span>Own tools</span><strong>ATLAS Verse</strong>
+          <p>Evaluate required checks, provider scope and exact-SHA evidence locally before governed release.</p>
+        </Link>
         <Link to="/cloud/releases">
           <span>Delivery</span><strong>Deployment & Release Center</strong>
           <p>Separate source, deployment and production verification using Release Control truth.</p>
@@ -332,6 +337,7 @@ export function AtlasCloudRoutes() {
   if (pathname === '/cloud/resources') return <AtlasCloudResourceManager />;
   if (pathname === '/cloud/domains') return <AtlasCloudDomains />;
   if (pathname === '/cloud/service-graph') return <AtlasCloudServiceGraph />;
+  if (pathname === '/cloud/verse') return <AtlasVersePage />;
   if (pathname === '/cloud/releases') return <AtlasCloudReleaseCenter />;
   if (pathname === '/cloud/production-verification') return <AtlasCloudProductionVerification />;
   if (pathname === '/cloud/iam') return <AtlasCloudIamPolicy />;
