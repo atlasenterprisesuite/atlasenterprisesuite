@@ -8,6 +8,7 @@ import { exportCreatorPrompt, generateCreatorMusic, listCreativeEngines, listCre
 import { CreatorExperiencePage } from '../experience/CreatorExperiencePage';
 import { DirectorWorkspace } from './director/DirectorWorkspace';
 import { ImageLabWorkspace } from './image/ImageLabWorkspace';
+import { SpatialForgeWorkspace } from './SpatialForgeWorkspace';
 import './creator.css';
 
 const CREATIVE_MEDIA_KINDS: CreativeMediaKind[] = ['image', 'video', 'music', 'voice', 'sfx', 'graphic', 'template'];
@@ -29,6 +30,7 @@ export const studioEntryPoints = [
   { title: 'Social Command Center', route: '/studio/social' },
   { title: 'Web Launch Lab', route: '/studio/web-launch' },
   { title: 'Image Lab', route: '/studio/create?type=image' },
+  { title: 'Spatial Forge (procedural OBJ)', route: '/studio/create?type=3d' },
   { title: 'ATLAS Director', route: '/studio/create?type=video' },
   { title: 'Music Lab', route: '/studio/create?type=music' },
   { title: 'Voice & Agents', route: '/studio/voice' },
@@ -84,6 +86,7 @@ export function CreatorWorkspace() {
     };
   }, [musicAudioUrl]);
 
+  if (searchParams.get('type') === '3d') return <SpatialForgeWorkspace />;
   if (kind === 'image') return <ImageLabWorkspace engines={engines} />;
   if (kind === 'video') return <DirectorWorkspace />;
 

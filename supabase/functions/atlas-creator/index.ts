@@ -7,6 +7,7 @@ import type { WebLaunchBlueprint } from '../../../packages/creator/web_launch.ts
 import type { CreatorPermission, ProductionSpec, ProviderId } from '../../../packages/creator/types.ts';
 import { validateImageEditRequest, type ImageEditRequest } from '../../../packages/creator/image_edit.ts';
 import { validateProductionSpec } from '../../../packages/creator/validator.ts';
+import { generateSpatialObjPreview, parseSpatialPrimitive, type SpatialRequest } from '../../../packages/creator/spatial_forge.ts';
 import { resolveCreatorContext, type CreatorContext } from './_shared/context.ts';
 import {
   createCreatorRecordingDownload,
@@ -470,6 +471,91 @@ async function handleImageEdit(req: Request) {
   }, 201);
 }
 
+async function handleSpatialPreview(req: Request) {
+  // creatorContext resolves identity, active membership and creator.generate
+  // on the server. Never accept tenant/actor/permission assertions in JSON.
+  const ctx = await creatorContext(req, 'creator.generate');
+  // Cap streamed request bytes, not just Content-Length (which may be absent).
+  // This endpoint only accepts a tiny JSON object with one primitive name.
+  const maxPayloadBytes = 2048;
+  const lengthHeader = req.headers.get('content-length');
+  if (lengthHeader && (!/^\d+$/.test(lengthHeader) || Number(lengthHeader) > maxPayloadBytes)) {
+    throw creatorError('spatial_request_too_large', 413);
+  }
+  if (!req.body) throw creatorError('spatial_preview_unsupported', 422);
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxPayloadBytes) {
+        await reader.cancel();
+        throw creatorError('spatial_request_too_large', 413);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const payloadBytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) { payloadBytes.set(chunk, offset); offset += chunk.byteLength; }
+  let body: Record<string, unknown>;
+  try {
+    const decoded = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes));
+    if (!decoded || Array.isArray(decoded) || typeof decoded !== 'object' ||
+        Object.keys(decoded).length !== 1 || !Object.hasOwn(decoded, 'prompt')) {
+      throw new Error('invalid_shape');
+    }
+    body = decoded as Record<string, unknown>;
+  } catch {
+    throw creatorError('spatial_preview_unsupported', 422);
+  }
+  if (typeof body.prompt !== 'string' || !parseSpatialPrimitive(body.prompt)) {
+    throw creatorError('spatial_preview_unsupported', 422);
+  }
+  const request: SpatialRequest = {
+    source: { kind: 'text', prompt: body.prompt },
+    format: 'obj',
+    material: 'none',
+    quality: 'preview'
+  };
+  const result = generateSpatialObjPreview(request, {
+    tenantId: ctx.orgId, // ATLAS current dual-scope tenant/org convention
+    orgId: ctx.orgId,
+    actorId: ctx.userId,
+    hasGeneratePermission: ctx.permissions.includes('creator.generate'),
+    // Exact bounded function is loaded in this Edge runtime: no GPU/provider.
+    nativePreviewVerified: true
+  });
+  // No generated item is recorded as an asset: this is an audited, ephemeral
+  // original OBJ primitive. Audit failure stops delivery.
+  await writeCreatorAudit(ctx.orgId, ctx.userId, 'creator.spatial.previewed', null, {
+    primitive: result.primitive,
+    vertex_count: result.vertexCount,
+    triangle_count: result.triangleCount,
+    engine: result.provenance,
+    storage_state: 'not-persisted',
+    external_provider_called: false,
+    billed_cost_cents: 0
+  });
+  return json({
+    ok: true,
+    file_name: result.fileName,
+    mime_type: result.mimeType,
+    provenance: result.provenance,
+    primitive: result.primitive,
+    vertex_count: result.vertexCount,
+    triangle_count: result.triangleCount,
+    obj_content: result.content,
+    persisted: false,
+    billable: false
+  });
+}
+
 async function handleSubmit(req: Request): Promise<never> {
   const ctx = await creatorContext(req, 'creator.generate');
   const body = await bodyJson(req);
@@ -500,6 +586,7 @@ async function route(req: Request) {
   if (api === 'providers') return handleProviders(req);
   if (api === 'engines' && req.method === 'GET') return handleEngines(req);
   if (api === 'prompt-export' && req.method === 'POST') return handlePromptExport(req);
+  if (api === 'spatial-preview' && req.method === 'POST') return handleSpatialPreview(req);
   if (api === 'music-generate' && req.method === 'POST') return handleMusicGenerate(req);
   if (api === 'productions') return handleProductions(req);
   if (api === 'production') return handleProduction(req, url);

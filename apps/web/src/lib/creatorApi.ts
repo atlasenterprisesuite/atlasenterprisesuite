@@ -400,6 +400,27 @@ export async function submitCreatorProduction(productionId: string, providerId: 
   });
 }
 
+export type SpatialPreviewResponse = {
+  ok: true;
+  file_name: string;
+  mime_type: 'model/obj';
+  provenance: 'atlas-procedural-preview';
+  primitive: 'cube' | 'pyramid' | 'cylinder' | 'sphere';
+  vertex_count: number;
+  triangle_count: number;
+  obj_content: string;
+  persisted: false;
+  billable: false;
+};
+
+/** Authenticated, ephemeral OBJ primitive preview; NOT neural 3D or saved asset. */
+export async function exportCreatorSpatialPreview(prompt: string): Promise<SpatialPreviewResponse> {
+  return creatorRequest<SpatialPreviewResponse>('spatial-preview', {}, {
+    method: 'POST',
+    body: JSON.stringify({ prompt })
+  });
+}
+
 export async function getNativeCreatorReadiness() {
   return nativeCreatorRequest<{
     ok: true;

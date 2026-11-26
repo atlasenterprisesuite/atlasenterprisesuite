@@ -32,6 +32,12 @@ const creatorSections: ModuleExperienceSection[] = [
         to: '/studio/create?type=image'
       },
       {
+        label: '3D · Native preview',
+        title: 'ATLAS Spatial Forge',
+        description: 'Generate and download authenticated, audited procedural OBJ shapes. Neural 3D reconstruction and textures remain unavailable until a verified runtime is authorized.',
+        to: '/studio/create?type=3d'
+      },
+      {
         label: 'Video',
         title: 'Generate & Direct Video',
         description: 'Plan scenes, shots, continuity and provider-aware video generation through ATLAS Director.',
