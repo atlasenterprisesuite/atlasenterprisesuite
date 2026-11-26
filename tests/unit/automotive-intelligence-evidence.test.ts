@@ -32,6 +32,15 @@ describe('ATLAS Automotive Intelligence — manufacturer evidence', () => {
     ], 'mclaren-720s-spider', 'power_bhp', now).status).toBe('unverified');
   });
 
+  it('rejects a forged value even when the attacker copies a real manufacturer URL', () => {
+    const official = AUTOMOTIVE_CLAIMS.find((item) => item.modelId === 'mclaren-720s-spider' && item.key === 'power_bhp');
+    expect(official).toBeDefined();
+    const forged = { ...official!, value: 999 };
+    const result = resolveAutomotiveClaim([forged], 'mclaren-720s-spider', 'power_bhp', now);
+    expect(result.status).toBe('unverified');
+    expect(result.values).toEqual([]);
+  });
+
   it('fails closed when source verification is dated in the future', () => {
     const result = resolveAutomotiveClaim([
       { modelId: 'mclaren-720s-spider', key: 'power_bhp', value: 710, unit: 'bhp',
