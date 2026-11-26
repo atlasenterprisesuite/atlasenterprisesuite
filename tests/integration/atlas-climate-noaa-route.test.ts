@@ -6,6 +6,7 @@ const config = readFileSync('supabase/config.toml', 'utf8');
 const normalizer = readFileSync('packages/analytics/src/noaa-active-alerts.ts', 'utf8');
 const policy = readFileSync('packages/analytics/src/climate-resilience.ts', 'utf8');
 const client = readFileSync('apps/web/src/modules/city/climateNoaaApi.ts', 'utf8');
+const readGateSql = readFileSync('supabase/migrations/20261126100000_atlas_climate_read_gate.sql', 'utf8');
 
 describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
   it('uses the canonical JWT-protected control plane and no public endpoint', () => {
@@ -15,13 +16,33 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
   });
   it('checks identity, organization membership and RBAC before provider request', () => {
     expect(edge).toContain('const ctx = await urbanTwinContext(req)');
-    expect(edge).toContain("await urbanTwinPermission(ctx, 'city.twin.manage')");
+    expect(edge).toContain("await urbanTwinPermission(ctx, 'climate.read')");
     expect(edge).toContain("auth.getUser(token)");
     expect(edge).toContain(".from('organization_members')");
     const start = edge.indexOf('async function handleClimateNoaaAlerts');
     const end = edge.indexOf('\nDeno.serve(', start);
     const route = edge.slice(start, end);
     expect(route.indexOf('const ctx = await urbanTwinContext(req)')).toBeLessThan(route.indexOf('await fetch(sourceUrl'));
+  });
+  it('enforces an independent climate.read role permission without Urban Twin manage authority', () => {
+    const route = edge.slice(edge.indexOf('async function handleClimateNoaaAlerts'), edge.indexOf('\nDeno.serve('));
+    expect(route).toContain("await urbanTwinPermission(ctx, 'climate.read')");
+    expect(route).not.toContain("await urbanTwinPermission(ctx, 'city.twin.manage')");
+    expect(readGateSql).toContain("('climate.read',");
+    expect(readGateSql).toContain("('staff', 'climate.read')");
+  });
+  it('checks a transactional server-only quota and mandatory audit before the NOAA request', () => {
+    const route = edge.slice(edge.indexOf('async function handleClimateNoaaAlerts'), edge.indexOf('\nDeno.serve('));
+    expect(route).toContain("'atlas_climate_acquire_read_slot'");
+    expect(route.indexOf("'atlas_climate_acquire_read_slot'")).toBeLessThan(route.indexOf('await fetch(sourceUrl'));
+    expect(route).toContain("'climate_provider_rate_limited', 429");
+    expect(route).toContain("if (completionAuditError) return urbanTwinFail(req, 'climate_audit_unavailable', 503)");
+    expect(route).not.toContain('await urbanTwinAudit(');
+    expect(readGateSql).toContain('on conflict (org_id, window_start) do update');
+    expect(readGateSql).toContain('where public.atlas_climate_provider_read_quota.request_count < 6');
+    expect(readGateSql).toContain("'climate.noaa.request.reserved'");
+    expect(readGateSql).toContain('revoke all on function public.atlas_climate_acquire_read_slot(uuid, uuid) from public, anon, authenticated');
+    expect(readGateSql).toContain('grant execute on function public.atlas_climate_acquire_read_slot(uuid, uuid) to service_role');
   });
   it('keeps the NOAA request server-side, fixed-origin, read-only and bounded', () => {
     expect(edge).toContain("'https://api.weather.gov/alerts/active?point='");
