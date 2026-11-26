@@ -8,7 +8,7 @@ import type { UrbanTwinEntity } from './urbanTwinRepository';
  */
 export function ClimateNoaaPanel({ entities }: { entities: readonly UrbanTwinEntity[] }) {
   const sites = useMemo(() => entities.filter((entity) =>
-    entity.verification_state === 'verified' &&
+    entity.verification_state === 'verified' && entity.lifecycle_state === 'active' &&
     entity.latitude !== null && Number.isFinite(entity.latitude) &&
     entity.longitude !== null && Number.isFinite(entity.longitude) &&
     Math.abs(entity.latitude) <= 90 && Math.abs(entity.longitude) <= 180
@@ -24,13 +24,13 @@ export function ClimateNoaaPanel({ entities }: { entities: readonly UrbanTwinEnt
 
   async function checkAlerts(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || selected.latitude === null || selected.longitude === null || isLoading) return;
+    if (!selected || isLoading) return;
     const entityId = selected.id;
     setRequestState('loading');
     setFailure('');
     setAnswer(null);
     try {
-      const response = await readAtlasClimateNoaaAlerts(selected.latitude, selected.longitude);
+      const response = await readAtlasClimateNoaaAlerts(entityId);
       if (response.mayPublishAlert !== false || !['complete', 'partial'].includes(response.status)) {
         throw new Error('invalid_climate_provider_response');
       }
@@ -54,7 +54,7 @@ export function ClimateNoaaPanel({ entities }: { entities: readonly UrbanTwinEnt
       <p className="urban-twin-climate-intro">
         Select a verified Urban Twin location and explicitly request the NOAA feed. This
         does not access device geolocation, send notifications, or publish emergency warnings.
-        Selected site coordinates are sent to the ATLAS server and NOAA for this lookup.
+        ATLAS validates the site and its coordinates on the server, then shares the site's coordinates with NOAA for this lookup.
       </p>
 
       <form className="urban-twin-climate-form" onSubmit={(event) => { void checkAlerts(event); }}>
