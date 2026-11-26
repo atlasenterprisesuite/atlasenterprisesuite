@@ -6,12 +6,15 @@ import {
   providerErrorState
 } from './provider-core.mjs';
 import { elevenLabsAccess, elevenLabsSpeech, elevenLabsVoice } from './elevenlabs.mjs';
+import { nativeGenericSpeech, nativeGenericStatus, validateNativeGenericInput } from './native-generic.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY') || '';
+const NATIVE_COMPOSER_URL = (Deno.env.get('ATLAS_NATIVE_COMPOSER_URL') || '').replace(/\/$/, '');
+const NATIVE_COMPOSER_TOKEN = Deno.env.get('ATLAS_NATIVE_COMPOSER_TOKEN') || '';
 const OPENAI_BASE = 'https://api.openai.com/v1';
 const OPENAI_CONSENTS_URL = 'https://api.openai.com/v1/audio/voice_consents';
 const OPENAI_VOICES_URL = 'https://api.openai.com/v1/audio/voices';
@@ -345,11 +348,41 @@ async function elevenLabsNarration(req: Request) {
   return response;
 }
 
+async function atlasNativeGenericStatus(req: Request) {
+  await context(req,'voice.personal.read');
+  const state = await nativeGenericStatus({url:NATIVE_COMPOSER_URL,token:NATIVE_COMPOSER_TOKEN});
+  return json({ok:true,provider:'atlas_native_generic',...state});
+}
+
+/** Explicit opt-in user request; this is the GENERIC ATLAS voice, not a personal clone. */
+async function atlasNativeGenericNarration(req: Request) {
+  const ctx = await context(req,'voice.personal.use');
+  const raw = await req.json().catch(()=>null);
+  const input = validateNativeGenericInput(raw);
+  if (!NATIVE_COMPOSER_URL || !NATIVE_COMPOSER_TOKEN) return json({ok:false,error:'provider_not_configured'},503);
+  const requestId = crypto.randomUUID();
+  const audit = (action: string) => servicePost('audit_logs',{
+    org_id:ctx.orgId,user_id:ctx.userId,action,table_name:'atlas_voice_provider',record_id:null,
+    new_data:{request_id:requestId,provider:'atlas_native_generic',mode:'generic',
+      locale:input.locale,characters:input.text.length}
+  });
+  // Fail closed on audit outage and permission changes. Never store text, voice data or secrets in logs.
+  await audit('voice.atlas_native_generic.requested');
+  const audio = await nativeGenericSpeech(
+    {url:NATIVE_COMPOSER_URL,token:NATIVE_COMPOSER_TOKEN},input);
+  await context(req,'voice.personal.use');
+  await audit('voice.atlas_native_generic.completed');
+  return audio;
+}
+
 async function handler(req: Request) {
   const url = new URL(req.url);
   const api = url.searchParams.get('api') || 'status';
   const provider = url.searchParams.get('provider');
-  if (provider && !['elevenlabs','openai_custom_voice'].includes(provider)) return json({ok:false,error:'unsupported_provider'},400);
+  if (provider && !['elevenlabs','openai_custom_voice','atlas_native_generic'].includes(provider)) return json({ok:false,error:'unsupported_provider'},400);
+  if (req.method === 'GET' && api === 'status' && url.searchParams.get('provider') === 'atlas_native_generic') return atlasNativeGenericStatus(req);
+  if (req.method === 'POST' && api === 'speech' && url.searchParams.get('provider') === 'atlas_native_generic') return atlasNativeGenericNarration(req);
+  if (provider === 'atlas_native_generic') return json({ok:false,error:'unsupported_provider_operation'},400);
   if (req.method === 'GET' && api === 'status' && url.searchParams.get('provider') === 'elevenlabs') return elevenLabsStatus(req);
   if (req.method === 'POST' && api === 'speech' && url.searchParams.get('provider') === 'elevenlabs') return elevenLabsNarration(req);
   if (provider === 'elevenlabs') return json({ok:false,error:'unsupported_provider_operation'},400);
