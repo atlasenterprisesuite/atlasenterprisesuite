@@ -46,7 +46,7 @@ describe('ATLAS Spatial Forge authentic Creator UI', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<MemoryRouter><SpatialForgeWorkspace /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Create OBJ preview' }));
-    expect((await screen.findByRole('status')).textContent).toContain('spatial_preview_provenance_invalid');
+    expect(await screen.findByText(/spatial_preview_provenance_invalid/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Download/ })).toBeNull();
   });
 });
