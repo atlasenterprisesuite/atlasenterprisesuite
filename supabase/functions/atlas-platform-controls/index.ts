@@ -58,7 +58,7 @@ async function audit(orgId: string | null, userId: string | null, action: string
 }
 function validateEndpoint(endpoint: unknown) {
   if (endpoint == null || endpoint === '') return null;
-  const u = new URL(String(endpoint));
+  const u = new globalThis.URL(String(endpoint));
   if (u.protocol !== 'https:' || u.username || u.password || u.pathname !== '/' || u.search || u.hash) throw new Error('invalid_provider_endpoint');
   return u.origin;
 }
@@ -425,7 +425,7 @@ async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
 }
 
 Deno.serve(async (req: Request) => {
-  const u = new URL(req.url);
+  const u = new globalThis.URL(req.url);
   const api = u.searchParams.get('api');
   if ((api || '').startsWith('urban-twin-')) return await handleUrbanTwin(req, api || '');
   if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req, u);
