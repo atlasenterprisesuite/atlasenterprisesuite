@@ -149,13 +149,22 @@ a server-side **offline job primitive**, not a public HTTP endpoint:
 4. Recopy a SHA-verified snapshot into a restrictive ephemeral directory;
    inference reads the snapshot, never the resolver's long-lived file path.
    The snapshot is cleaned up after inference, including error paths.
-5. Only then can an injected engine synthesize. `ChatterboxV3Engine` uses
-   `ChatterboxMultilingualTTS.from_pretrained(device=..., t3_model='v3')`
-   and `generate(text, language_id=..., audio_prompt_path=...)`.
+5. Only then can an injected engine synthesize. `ChatterboxV3Engine`
+   loads reviewed V3 artifacts using `ChatterboxMultilingualTTS.from_local`,
+   NEVER `from_pretrained`, which calls the Hugging Face
+   `snapshot_download` helper even when cache/offline flags are present.
 6. `ATLAS_PERSONAL_VOICE_ENABLED=1`, `HF_HUB_OFFLINE=1` and
    `TRANSFORMERS_OFFLINE=1` are mandatory before attempting loading.
    The model weights and Python dependencies must already be installed in
    a reviewed private runtime; this PR never downloads or installs them.
+   The private model directory must be configured via
+   `ATLAS_PERSONAL_VOICE_MODEL_DIR` with a local
+   `atlas-model-manifest.json`. Pin its exact raw bytes using
+   `ATLAS_PERSONAL_VOICE_MANIFEST_SHA256`. The manifest must enumerate
+   SHA-256 values for every required V3 model file (and optional `conds.pt`
+   if installed). All file hashes are verified **before** importing/using
+   model weights. A missing file, symlink, altered manifest or tampered
+   weight prevents synthesis. No weight files or personal data go in Git.
 7. Check output WAV bytes and re-read authorization after inference.
    No audio is returned when permission was revoked during generation.
 
