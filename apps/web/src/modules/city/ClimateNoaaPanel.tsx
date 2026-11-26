@@ -19,7 +19,7 @@ export function ClimateNoaaPanel({ entities }: { entities: readonly UrbanTwinEnt
   const [failure, setFailure] = useState('');
   const [answer, setAnswer] = useState<{ entityId: string; response: AtlasClimateNoaaResponse } | null>(null);
   const selected = sites.find((site) => site.id === selectedId) ?? null;
-  const result = answer?.entityId === selected?.id ? answer.response : null;
+  const result = answer && selected && answer.entityId === selected.id ? answer.response : null;
   const isLoading = requestState === 'loading';
 
   async function checkAlerts(event: FormEvent<HTMLFormElement>) {
