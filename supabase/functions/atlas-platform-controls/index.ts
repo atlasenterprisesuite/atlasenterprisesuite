@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
+import { normalizeNoaaActiveAlerts } from '../../../packages/analytics/src/noaa-active-alerts.ts';
 
 const URL = Deno.env.get('SUPABASE_URL')!;
 const PUBLISHABLE_KEYS = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}');
@@ -347,10 +348,87 @@ async function handleUrbanTwin(req: Request, api: string) {
   }
 }
 
+
+/** ATLAS Climate: US NWS active-alert lookup (read-only). No public alert publication. */
+async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: urbanTwinCors(req) });
+  if (req.method !== 'GET') return urbanTwinFail(req, 'method_not_allowed', 405);
+  try {
+    // Reuse ATLAS identity, verified active organization membership, and RBAC.
+    const ctx = await urbanTwinContext(req);
+    await urbanTwinPermission(ctx, 'city.twin.manage');
+    const latText = endpoint.searchParams.get('latitude') || '';
+    const lonText = endpoint.searchParams.get('longitude') || '';
+    const decimal = /^-?\d{1,3}(?:\.\d{1,6})?$/;
+    if (!decimal.test(latText) || !decimal.test(lonText)) return urbanTwinFail(req, 'invalid_coordinates', 422);
+    const latitude = Number(latText);
+    const longitude = Number(lonText);
+    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 ||
+        !Number.isFinite(longitude) || Math.abs(longitude) > 180) return urbanTwinFail(req, 'invalid_coordinates', 422);
+
+    // Fixed destination, bounded request; never accept a provider URL from the caller.
+    const point = latitude.toFixed(4) + ',' + longitude.toFixed(4);
+    const sourceUrl = 'https://api.weather.gov/alerts/active?point=' + encodeURIComponent(point);
+    const response = await fetch(sourceUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/geo+json',
+        'User-Agent': 'ATLAS-Climate-Resilience-777 (+https://atlasenterprisesuite.com)'
+      },
+      redirect: 'error',
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) return urbanTwinFail(req, 'noaa_provider_unavailable', 503);
+    const contentType = response.headers.get('content-type') || '';
+    if (!/application\/(?:geo\+json|json)/i.test(contentType)) return urbanTwinFail(req, 'invalid_noaa_content_type', 502);
+    const limitBytes = 1_048_576;
+    const declared = response.headers.get('content-length');
+    if (declared && (!/^\d+$/.test(declared) || Number(declared) > limitBytes)) {
+      return urbanTwinFail(req, 'noaa_response_too_large', 502);
+    }
+    const reader = response.body?.getReader();
+    if (!reader) return urbanTwinFail(req, 'invalid_noaa_response', 502);
+    const decoder = new TextDecoder();
+    let byteCount = 0;
+    let textBody = '';
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      byteCount += next.value.byteLength;
+      if (byteCount > limitBytes) {
+        await reader.cancel();
+        return urbanTwinFail(req, 'noaa_response_too_large', 502);
+      }
+      textBody += decoder.decode(next.value, { stream: true });
+    }
+    textBody += decoder.decode();
+    let raw: unknown;
+    try { raw = JSON.parse(textBody); } catch { return urbanTwinFail(req, 'invalid_noaa_response', 502); }
+    const normalized = normalizeNoaaActiveAlerts(raw, {
+      latitude, longitude, fetchedAt: new Date().toISOString(), sourceUrl
+    });
+    // Audit counts only: no locations or raw alert contents in logs.
+    await urbanTwinAudit(ctx, 'climate.noaa.read', 'climate_noaa_external', null, {
+      provider_count: normalized.providerCount,
+      reviewable_count: normalized.alerts.length,
+      rejected_count: normalized.rejectedCount,
+      truncated: normalized.truncated
+    });
+    return urbanTwinJson(req, { ok: true, domain: 'climate', ...normalized });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : '';
+    if (reason === 'authentication_required' || reason === 'invalid_session') return urbanTwinFail(req, 'authentication_required', 401);
+    if (reason === 'permission_denied' || reason === 'organization_membership_required') return urbanTwinFail(req, 'permission_denied', 403);
+    if (reason === 'invalid_organization') return urbanTwinFail(req, 'invalid_organization', 422);
+    return urbanTwinFail(req, 'climate_provider_request_failed', 503);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const u = new URL(req.url);
   const api = u.searchParams.get('api');
   if ((api || '').startsWith('urban-twin-')) return await handleUrbanTwin(req, api || '');
+  if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req, u);
   if (req.method === 'GET' && api === 'readiness') return json({ ok: true, service: 'atlas-platform-controls', version: VERSION, source_of_runtime_truth: 'supabase', github_required: false, domains: ['integrations','agents','voice'], checked_at: new Date().toISOString() });
   if (req.method !== 'POST') return fail('method_not_allowed', 405);
   let body: any = {}; try { body = await req.json(); } catch { return fail('invalid_json', 400); }
