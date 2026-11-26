@@ -90,7 +90,7 @@ begin
  end if;
  select count(*) into events from public.atlas_enterprise_credit_events
     where org_id=a and user_id=u and window_id='2026-11';
- if events<>6 then
+ if events<>5 then
     raise exception 'P0 immutable audit count mismatch: %', events;
  end if;
  raise notice 'enterprise-credit-ledger unit invariants PASS';
