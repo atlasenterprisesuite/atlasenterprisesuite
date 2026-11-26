@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { exportCreatorSpatialPreview, type SpatialPreviewResponse } from '../../lib/creatorApi';
 
