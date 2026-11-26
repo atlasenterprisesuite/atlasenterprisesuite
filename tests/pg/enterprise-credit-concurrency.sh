@@ -79,4 +79,42 @@ begin
 end
 \$\$;
 "
-echo "PG17 concurrent quota and idempotency: PASS"
+# Revocation racing a reserve must fail closed after the membership row
+# becomes revoked. FOR SHARE authorization must not read a stale ACTIVE row.
+psql -X -v ON_ERROR_STOP=1 -q <<SQL
+set role service_role;
+select public.atlas_enterprise_credit_set_limit('$A','$U','2027-02',2,true,'$OWNER');
+SQL
+
+psql -X -v ON_ERROR_STOP=1 -qAt -c "
+  begin;
+  update public.organization_members
+  set status='revoked'
+  where org_id='$A' and user_id='$U';
+  select pg_sleep(1);
+  commit;
+" >"$tmp/revoke.out" 2>"$tmp/revoke.err" & revoked_pid=$!
+sleep 0.2
+if call_reserve '2027-02' 'revoke-race-0000001' 1 "$tmp/denied"; then
+  echo "P0: race allowed reservation after revocation"
+  exit 1
+fi
+wait "$revoked_pid"
+grep -q 'enterprise_credit_scope_denied' "$tmp/denied.err" || {
+  echo "P0: reservation denied for wrong reason"
+  cat "$tmp/denied.err"
+  exit 1
+}
+psql -X -v ON_ERROR_STOP=1 -qAt -c "
+do \$\$
+declare reserved bigint; n integer;
+begin
+ select reserved_credits into reserved from public.atlas_enterprise_credit_accounts
+ where org_id='$A' and user_id='$U' and window_id='2027-02';
+ select count(*) into n from public.atlas_enterprise_credit_reservations
+ where org_id='$A' and user_id='$U' and window_id='2027-02';
+ if reserved<>0 or n<>0 then raise exception 'P0 revocation race consumed credits'; end if;
+end
+\$\$;
+"
+echo "PG17 concurrent quota, idempotency and revocation: PASS"
