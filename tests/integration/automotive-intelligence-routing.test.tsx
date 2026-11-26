@@ -10,7 +10,7 @@ const resolver = readFileSync('apps/web/src/extensions/resolveAtlasExtension.tsx
 afterEach(cleanup);
 
 describe('ATLAS Automotive Intelligence — canonical protected route', () => {
-  it('is registered once as a partial authenticated Mobility module', () => {
+  it('is registered once as an external-gated authenticated Mobility module', () => {
     expect((registry.match(/id: 'automotive-intelligence'/g) || []).length).toBe(1);
     expect(registry).toContain("route: '/mobility/automotive'");
     expect(registry).toContain("readiness: 'partial'");
