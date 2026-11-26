@@ -66,3 +66,25 @@ test('personal launcher forces offline mode and installers package the policy', 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /local_core_offline_model_file_required/);
 });
+
+test('doctor reports native hardware without leaking environment or claiming inference', () => {
+  const cli = fileURLToPath(new URL('../atlas-local-core-device.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [cli, 'doctor'], {
+    env: { ...process.env, ATLAS_LOCAL_AI_TOKEN: 'doctor-secret-sentinel', ATLAS_LOCAL_AI_MODEL_FILE: 'missing-doctor-model-sentinel.gguf' },
+    encoding: 'utf8', timeout: 5000
+  });
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.hardware.architecture, process.arch);
+  assert.ok(report.hardware.logicalCores > 0);
+  assert.ok(report.hardware.totalMemoryBytes > 0);
+  assert.ok(report.hardware.freeMemoryBytes >= 0);
+  assert.ok(report.hardware.freeMemoryBytes <= report.hardware.totalMemoryBytes);
+  assert.ok(report.hardware.storageAvailableBytes === null || report.hardware.storageAvailableBytes >= 0);
+  assert.equal(report.hardware.gpu, null);
+  assert.equal(report.hardware.npu, null);
+  assert.equal(report.localModelFileAvailable, false);
+  assert.equal(report.modelInferenceVerified, false);
+  assert.equal(report.remoteDeviceValidated, false);
+  assert.equal(report.hardware.compatibilityVerified, false);
+  assert.doesNotMatch(result.stdout, /doctor-secret-sentinel|missing-doctor-model-sentinel/);
+});
