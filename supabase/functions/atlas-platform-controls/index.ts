@@ -357,16 +357,36 @@ async function handleClimateNoaaAlerts(req: Request) {
     // Reuse ATLAS identity, verified active organization membership, and RBAC.
     const ctx = await urbanTwinContext(req);
     await urbanTwinPermission(ctx, 'climate.read');
-    // Coordinates travel in the authenticated request body, not in ATLAS access-log URLs.
-    let coords: unknown;
-    try { coords = await req.json(); } catch { return urbanTwinFail(req, 'invalid_json', 400); }
-    if (!coords || typeof coords !== 'object' || Array.isArray(coords)) return urbanTwinFail(req, 'invalid_coordinates', 422);
-    const rawCoords = coords as Record<string, unknown>;
-    const latitude = rawCoords.latitude;
-    const longitude = rawCoords.longitude;
+    // Never trust coordinates or verified status asserted by the browser.
+    // Client supplies only the Urban Twin site ID, not location data.
+    let selection: unknown;
+    try { selection = await req.json(); } catch { return urbanTwinFail(req, 'invalid_json', 400); }
+    if (!selection || typeof selection !== 'object' || Array.isArray(selection)) {
+      return urbanTwinFail(req, 'invalid_site_id', 422);
+    }
+    const siteId = (selection as Record<string, unknown>).site_id;
+    if (typeof siteId !== 'string' || !urbanTwinUuid(siteId)) {
+      return urbanTwinFail(req, 'invalid_site_id', 422);
+    }
+    // Use the user's RLS-scoped client, not service_role, for the site lookup.
+    // Org, state and lifecycle are all rechecked before reserving a NOAA slot.
+    const { data: site, error: siteError } = await ctx.sb
+      .from('atlas_urban_twin_entities')
+      .select('id,latitude,longitude,org_id')
+      .eq('id', siteId)
+      .eq('org_id', ctx.orgId)
+      .eq('verification_state', 'verified')
+      .eq('lifecycle_state', 'active')
+      .maybeSingle();
+    if (siteError) return urbanTwinFail(req, 'climate_site_lookup_unavailable', 503);
+    if (!site) return urbanTwinFail(req, 'climate_site_not_verified', 403);
+    const latitude = site.latitude;
+    const longitude = site.longitude;
     if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
         !Number.isFinite(latitude) || Math.abs(latitude) > 90 ||
-        !Number.isFinite(longitude) || Math.abs(longitude) > 180) return urbanTwinFail(req, 'invalid_coordinates', 422);
+        !Number.isFinite(longitude) || Math.abs(longitude) > 180) {
+      return urbanTwinFail(req, 'climate_site_not_verified', 403);
+    }
 
     // One durable organization-wide quota reservation and audit, before upstream calls.
     // The RPC executes as service_role only after ATLAS user and RBAC checks.
