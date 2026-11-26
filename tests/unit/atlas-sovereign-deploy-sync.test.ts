@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateAtlasSovereignDeployReadiness } from '../../packages/core/src/deploymentControl';
+import { buildAtlasSovereignReleaseDraft, canWriteAtlasSovereignReleaseDraft, evaluateAtlasSovereignDeployReadiness } from '../../packages/core/src/deploymentControl';
 
 const SHA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const now = Date.parse('2026-11-26T12:00:00.000Z');
@@ -91,5 +91,68 @@ describe('ATLAS sovereign deploy — release/readiness synchronization', () => {
     expect(evaluateAtlasSovereignDeployReadiness({
       organizationId: 'tenant-A', infra: input, release: release(), now
     }).blockers).toContain('canonical_repository_mismatch');
+  });
+});
+
+describe('ATLAS Deploy controlled write contract', () => {
+  const validInput = () => ({
+    releaseKey: 'atlas-deploy-777-rw',
+    version: '2026.11.26-rc1',
+    channel: 'development' as const,
+    sourceSha: 'a'.repeat(40),
+    artifactSha256: 'b'.repeat(64)
+  });
+
+  it('writes a server-authorized draft manifest with distinct commit SHA and immutable artifact digest', () => {
+    const result = buildAtlasSovereignReleaseDraft(validInput());
+    expect(result).toEqual({
+      release_key: 'atlas-deploy-777-rw',
+      version: '2026.11.26-rc1',
+      channel: 'development',
+      source_ref: 'a'.repeat(40),
+      notes: expect.stringContaining('Unverified'),
+      metadata: { github_ci_required: true },
+      components: [{
+        component_type: 'web_bundle',
+        component_key: 'atlas-enterprise-suite-web',
+        artifact_ref: null,
+        artifact_sha256: 'b'.repeat(64),
+        target_version: '2026.11.26-rc1',
+        provider: 'cloudflare',
+        deployment_order: 100,
+        rollback_strategy: 'manual_only',
+        rollback_ref: null,
+        requires_migration: false,
+        migration_ref: null,
+        metadata: {}
+      }]
+    });
+    expect(JSON.stringify(result)).not.toContain('organization_id');
+  });
+
+  it('rejects missing, invalid or placeholder checksums; never invents one', () => {
+    const inputs = [
+      { sourceSha: 'main' },
+      { sourceSha: 'a'.repeat(39) },
+      { artifactSha256: '' },
+      { artifactSha256: '0'.repeat(64) },
+      { artifactSha256: 'z'.repeat(64) },
+      { releaseKey: 'not allowed spaces' },
+      { version: '' },
+      { channel: 'unknown' },
+    ];
+    for (const item of inputs) {
+      expect(() => buildAtlasSovereignReleaseDraft({ ...validInput(), ...item } as never)).toThrow();
+    }
+  });
+
+  it('prevents writes with revoked permissions, wrong tenant and expired infrastructure evidence', () => {
+    expect(canWriteAtlasSovereignReleaseDraft({ organizationId: 'tenant-A', infra: infra(), granted: true, now })).toBe(true);
+    expect(canWriteAtlasSovereignReleaseDraft({ organizationId: 'tenant-B', infra: infra(), granted: true, now })).toBe(false);
+    expect(canWriteAtlasSovereignReleaseDraft({ organizationId: 'tenant-A', infra: infra(), granted: false, now })).toBe(false);
+    expect(canWriteAtlasSovereignReleaseDraft({ organizationId: 'tenant-A', infra: null, granted: true, now })).toBe(false);
+    const stale = infra();
+    stale.evidence.generated_at = '2026-11-25T00:00:00.000Z';
+    expect(canWriteAtlasSovereignReleaseDraft({ organizationId: 'tenant-A', infra: stale, granted: true, now })).toBe(false);
   });
 });
