@@ -13,6 +13,7 @@ import { ManagerReadinessError, syncManagerReadiness } from './manager-readiness
 import { createWorkWorkflowPlan, listWorkWorkflows, WorkExecutionError } from './work.ts';
 import { evaluateWorkStepServer, WorkPolicyResolutionError } from './work-policy.ts';
 import { readEnterpriseUsage, EnterpriseUsageError } from './enterprise-usage.ts';
+import { readEnterpriseCreditStatus, EnterpriseCreditReadError } from './enterprise-credit-read.ts';
 import {
   listWorkConnections,
   registerWorkConnectionRef,
@@ -67,6 +68,7 @@ const SUPPORTED_OPERATIONS = new Set([
   'list_workflows',
   'evaluate_work_step',
   'get_enterprise_usage',
+  'get_enterprise_credit_status',
   'list_work_connections',
   'register_work_connection_ref',
   'revoke_work_connection_ref',
@@ -845,6 +847,7 @@ function errorResponse(req: Request, error: unknown) {
   if (error instanceof WorkConnectionError) return json(req, { ok: false, error: error.code }, error.status);
   if (error instanceof WorkPolicyResolutionError) return json(req, { ok: false, error: error.code }, error.status);
   if (error instanceof EnterpriseUsageError) return json(req, { ok: false, error: error.code }, error.status);
+  if (error instanceof EnterpriseCreditReadError) return json(req, { ok: false, error: error.code }, error.status);
   if (error instanceof OpenAiDomainPilotError) return json(req, { ok: false, error: error.code }, error.status);
   return json(req, { ok: false, error: 'internal_error' }, 500);
 }
@@ -910,6 +913,11 @@ Deno.serve(async (req: Request) => {
       requireExecutionPermission(context, 'execution.read');
       const report = await readEnterpriseUsage({ admin: adminClient(), context });
       return json(req, { ok: true, report });
+    }
+    if (operation === 'get_enterprise_credit_status') {
+      requireExecutionPermission(context, 'execution.read');
+      const credit = await readEnterpriseCreditStatus({ admin: adminClient(), context });
+      return json(req, { ok: true, credit });
     }
     if (['list_work_connections', 'register_work_connection_ref', 'revoke_work_connection_ref'].includes(operation)) return await connectionOperation(req, operation, body, context);
     if (['list_work_runtimes', 'enroll_work_runtime', 'enqueue_work_runtime_job'].includes(operation)) return await runtimeUserOperation(req, operation, body, context);
