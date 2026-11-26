@@ -67,3 +67,16 @@ Para entrenar un clasificador de aromas, usar como base el kit oficial Bosch de 
 - P0: ninguna afirmación de `connected`, `live`, `detecting`, `trained` o `verified in production` sin dispositivo, revisión de licencias, pruebas de ingesta y evidencia E2E.
 
 **Clasificación ATLAS 777:** descripción técnica verificada por fuentes primarias; dispositivo propuesto; telemetría y reconocimiento real pendientes.
+
+## Continuación RUN — Normalizador local sin persistencia (2026-11-26)
+
+El adaptador real de software está en `tools/local-agent/lib/bme688-telemetry.mjs`, reutilizando el ATLAS Local Agent existente; no crea un agente nuevo ni un endpoint público.
+
+- `normalizeBme688Frame` comprueba el modelo, los cuatro parámetros ambientales, fecha UTC reciente y contador de secuencia. Rechaza campos entrantes `org_id`, `tenant_id`, `provenance`, `co2_ppm` o clasificaciones arbitrarias; no les atribuye autoridad.
+- `bme688UrbanTwinCandidates` produce cuatro observaciones candidatas compatibles con las métricas del esquema `atlas_urban_twin_observations`. Deliberadamente no proporciona `provenance`, `org_id`, `tenant_id` ni `evidence_refs`. Esas propiedades solo pueden establecerse después de verificar identidad, ámbito organizativo, vínculo de sensor y secuencia anti-replay en un servicio autorizado.
+- El código no lee hardware ni utiliza credenciales, no envía telemetría, no inserta en Supabase y no fabrica mediciones. Las fechas/valores del test son **datos sintéticos de prueba**, no de sensores conectados.
+- Pruebas de nodo: `node --test tools/local-agent/tests/bme688-telemetry.test.mjs`. Prueba local del 26-Nov-2026: 5/5 PASS; prueba inicial 4/5 FAIL y corrección posterior comprobada.
+- Evidencia de integridad del código: blob Git `5e4f72fca7087f73f35a4aabbf2c2ac96231af25`; pruebas `3821d6425db9f8bbcb54ab2599c784c2046e219a`.
+- Riesgos que permanecen bloqueantes: sensor físico inexistente o sin vinculación, almacenamiento de secuencias anti-replay atómico, sesión del Local Agent verificada, ingestión bajo RLS/tenant, licencia BSEC y pruebas E2E.
+
+La arquitectura Urban Twin **ya contiene** tablas para `entities`, `bindings` y `observations` en `supabase/migrations/20261002184539_atlas_urban_twin_core.sql`; cualquier ingesta futura debe reutilizarlas. No aceptar nunca la identidad o el tenant que se declare dentro de una lectura IoT.
