@@ -6,6 +6,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const backend = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(async () => ({ id: 'tenant-A', role: 'owner' })),
   atlasAuthorizedJson: vi.fn(async (path: string) => {
+    if (path.includes('api=deployments')) return {
+      ok: true, deployments: [{ id: 'deploy-1', status: 'awaiting_gates', environment: 'production' }]
+    };
+    if (path.includes('api=deployment&')) return {
+      ok: true, deployment: { id: 'deploy-1', status: 'awaiting_gates', environment: 'production' },
+      gates: [{ id: 'gate-1', gate_key: 'exact-sha-runtime', status: 'pending', required: true }]
+    };
     if (path.includes('atlas-infra-status')) return {
       scope: { organization_id: 'tenant-A' },
       canonical_repository: 'atlasenterprisesuite/atlasenterprisesuite',
@@ -44,6 +51,11 @@ describe('ATLAS Deploy native cloud console', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: 'Synchronize evidence' }));
     await waitFor(() => expect(backend.atlasAuthorizedJson).toHaveBeenCalledTimes(4));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect deployment gates' }));
+    expect(await screen.findByText('exact-sha-runtime')).toBeInTheDocument();
+    expect(screen.getByText(/awaiting_gates/)).toBeInTheDocument();
+    expect(backend.atlasAuthorizedJson).toHaveBeenCalledTimes(6);
+
   });
 
   it('blocks when identity cannot be established; cannot present synthetic data', async () => {
