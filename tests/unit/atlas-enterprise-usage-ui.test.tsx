@@ -2,14 +2,15 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../apps/web/src/work/api', () => ({ getEnterpriseUsage: vi.fn() }));
+vi.mock('../../apps/web/src/work/api', () => ({ getEnterpriseUsage: vi.fn(), getEnterpriseCreditStatus: vi.fn() }));
 vi.mock('../../apps/web/src/work/WorkSubnav', () => ({ WorkSubnav: () => null }));
 vi.mock('../../apps/web/src/work/ExecutionConfiguration', () => ({ ExecutionConfiguration: () => null }));
 
-import { getEnterpriseUsage } from '../../apps/web/src/work/api';
+import { getEnterpriseUsage, getEnterpriseCreditStatus } from '../../apps/web/src/work/api';
 import { WorkPoliciesPage } from '../../apps/web/src/work/WorkPoliciesPage';
 
 const usage = vi.mocked(getEnterpriseUsage);
+const credits = vi.mocked(getEnterpriseCreditStatus);
 const emptyReport = {
   source: 'atlas_ai_usage' as const,
   period: '2026-11',
@@ -21,13 +22,21 @@ const emptyReport = {
   paidExecutionEnabled: false as const
 };
 
-beforeEach(() => usage.mockResolvedValue(emptyReport));
+beforeEach(() => {
+  usage.mockResolvedValue(emptyReport);
+  credits.mockResolvedValue({
+    source: 'atlas_enterprise_credit_accounts',
+    status: 'unconfigured', period: '2026-11',
+    limitCredits: null, reservedCredits: null, spentCredits: null,
+    availableCredits: null, paidExecutionEnabled: false
+  });
+});
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('ATLAS Work Enterprise usage transparency UI', () => {
   it('renders verified empty usage without inventing credits or connected services', async () => {
     render(<WorkPoliciesPage />);
-    expect(await screen.findByText('2026-11')).toBeInTheDocument();
+    expect((await screen.findAllByText('2026-11')).length).toBeGreaterThan(0);
     expect(screen.getByText(/No AI usage records were found/i)).toBeInTheDocument();
     expect(screen.getByText(/No paid AI credits are authorized/i)).toBeInTheDocument();
     expect(screen.getByText('Not configured')).toBeInTheDocument();
@@ -60,9 +69,9 @@ describe('ATLAS Work Enterprise usage transparency UI', () => {
       .mockResolvedValueOnce(emptyReport);
     render(<WorkPoliciesPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('authentication_required');
-    expect(screen.queryByText('2026-11')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Refresh recorded activity/i }));
-    expect(await screen.findByText('2026-11')).toBeInTheDocument();
+    expect(screen.queryByText('Recorded requests')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Refresh recorded activity/i }));
+    expect(await screen.findByText(/No AI usage records were found/i)).toBeInTheDocument();
     expect(usage).toHaveBeenCalledTimes(2);
   });
 });
