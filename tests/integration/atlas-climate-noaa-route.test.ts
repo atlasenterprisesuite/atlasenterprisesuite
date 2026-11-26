@@ -58,13 +58,30 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(client).toContain("'x-atlas-org-id': organization.id");
     expect(client).toContain("/functions/v1/atlas-platform-controls?api=climate-noaa-alerts");
     expect(client).toContain("method: 'POST'");
-    expect(client).toContain('body: JSON.stringify({ latitude, longitude })');
+    expect(client).toContain('body: JSON.stringify({ site_id: siteId })');
+    expect(client).not.toContain('body: JSON.stringify({ latitude, longitude })');
     expect(edge).toContain("if (req.method !== 'POST') return urbanTwinFail(req, 'method_not_allowed', 405)");
-    expect(edge).toContain('let coords: unknown;');
-    expect(edge).toContain('coords = await req.json();');
+    expect(edge).toContain('let selection: unknown;');
+    expect(edge).toContain('selection = await req.json();');
+    expect(edge).toContain(".from('atlas_urban_twin_entities')");
+    expect(edge).toContain(".eq('org_id', ctx.orgId)");
+    expect(edge).toContain(".eq('verification_state', 'verified')");
+    expect(edge).toContain(".eq('lifecycle_state', 'active')");
+    expect(edge).toContain('const latitude = site.latitude;');
+    expect(edge).toContain('const longitude = site.longitude;');
+    expect(edge).not.toContain('rawCoords.latitude');
     expect(client).not.toContain('URLSearchParams');
     expect(client).not.toContain('https://api.weather.gov');
     expect(edge).toContain('new globalThis.URL(req.url)');
+  });
+  it('checks verified site ownership and coordinates before provider quota reservation', () => {
+    const route = edge.slice(edge.indexOf('async function handleClimateNoaaAlerts'), edge.indexOf('\nDeno.serve('));
+    const siteLookup = route.indexOf(".from('atlas_urban_twin_entities')");
+    expect(siteLookup).toBeGreaterThan(0);
+    expect(siteLookup).toBeLessThan(route.indexOf("'atlas_climate_acquire_read_slot'"));
+    expect(route).toContain("'climate_site_not_verified', 403");
+    expect(route).toContain('urbanTwinUuid(siteId)');
+    expect(route).not.toContain('endpoint.searchParams');
   });
   it('does not broadcast alerts or promote unverified evidence', () => {
     expect(normalizer).toContain('mayPublishAlert: false');
