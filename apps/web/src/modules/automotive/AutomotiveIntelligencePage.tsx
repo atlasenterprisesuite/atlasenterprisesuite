@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AUTOMOTIVE_CLAIMS, AUTOMOTIVE_MODELS, resolveAutomotiveClaim,
@@ -19,6 +19,7 @@ export function AutomotiveIntelligencePage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState('');
   const [error, setError] = useState('');
+  const readGeneration = useRef(0);
   const model = AUTOMOTIVE_MODELS.find((item) => item.id === selectedId);
 
   // Object URL is the only location of the selected image. Never upload or persist it.
@@ -26,23 +27,34 @@ export function AutomotiveIntelligencePage() {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
   }, [photoUrl]);
 
+  // Cancel any unfinished read when the workspace unmounts.
+  useEffect(() => () => { readGeneration.current += 1; }, []);
+
+  function clearLocalPhoto() {
+    readGeneration.current += 1;
+    setPhotoUrl(null);
+    setPhotoName('');
+  }
+
   async function inspectLocalPhoto(file: File | undefined) {
     if (!file) return;
+    const generation = ++readGeneration.current;
     setError('');
     try {
       const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      // A newer file selection, clear action or unmount invalidates this read.
+      if (generation !== readGeneration.current) return;
       const problem = validateAutomotiveImageSignature(file.type, header, file.size);
       if (problem) {
-        setPhotoUrl(null);
-        setPhotoName('');
+        clearLocalPhoto();
         setError(problem);
         return;
       }
       setPhotoUrl(URL.createObjectURL(file));
       setPhotoName(file.name);
     } catch {
-      setPhotoUrl(null);
-      setPhotoName('');
+      if (generation !== readGeneration.current) return;
+      clearLocalPhoto();
       setError('The image could not be read locally.');
     }
   }
@@ -80,7 +92,7 @@ export function AutomotiveIntelligencePage() {
               <figcaption>{photoName} · Local preview only</figcaption>
             </figure>
           ) : <p className="automotive-empty">No local image selected.</p>}
-          {photoUrl && <button type="button" onClick={() => { setPhotoUrl(null); setPhotoName(''); }}>Clear image</button>}
+          {photoUrl && <button type="button" onClick={clearLocalPhoto}>Clear image</button>}
           <p><strong>Visual recognition:</strong> Not configured. A photo alone cannot certify the vehicle identity or VIN.</p>
         </section>
 
