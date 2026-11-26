@@ -60,7 +60,8 @@ describe('ATLAS Climate / NOAA endpoint tenant and provider boundaries', () => {
     expect(client).toContain("method: 'POST'");
     expect(client).toContain('body: JSON.stringify({ latitude, longitude })');
     expect(edge).toContain("if (req.method !== 'POST') return urbanTwinFail(req, 'method_not_allowed', 405)");
-    expect(edge).toContain('const coords: unknown = await req.json()');
+    expect(edge).toContain('let coords: unknown;');
+    expect(edge).toContain('coords = await req.json();');
     expect(client).not.toContain('URLSearchParams');
     expect(client).not.toContain('https://api.weather.gov');
     expect(edge).toContain('new globalThis.URL(req.url)');
