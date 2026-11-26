@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from native_composer import readiness, render_video
+from speech import synthesize_generic_speech
 
 MAX_BODY_BYTES = 1_000_000
 
@@ -87,7 +88,8 @@ class NativeComposerHandler(BaseHTTPRequestHandler):
         _json(self, 404, {'ok': False, 'error': 'not_found'})
 
     def do_POST(self) -> None:
-        if urlparse(self.path).path != '/generate':
+        route = urlparse(self.path).path
+        if route not in {'/generate', '/speech'}:
             _json(self, 404, {'ok': False, 'error': 'not_found'})
             return
         if not self._authorized():
@@ -104,6 +106,16 @@ class NativeComposerHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode('utf-8'))
             if not isinstance(payload, dict):
                 raise ValueError('invalid_json')
+            if route == '/speech':
+                audio = synthesize_generic_speech(payload)
+                self.send_response(200)
+                self.send_header('content-type', 'audio/wav')
+                self.send_header('content-length', str(len(audio)))
+                self.send_header('cache-control', 'private, no-store')
+                self.send_header('x-atlas-voice-mode', 'generic')
+                self.end_headers()
+                self.wfile.write(audio)
+                return
             job_id = str(uuid.uuid4())
             output_name = f'{job_id}.mp4'
             output = safe_asset_path(self.asset_root, output_name)
