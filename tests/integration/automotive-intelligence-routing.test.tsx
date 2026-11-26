@@ -13,7 +13,7 @@ describe('ATLAS Automotive Intelligence — canonical protected route', () => {
   it('is registered once as an external-gated authenticated Mobility module', () => {
     expect((registry.match(/id: 'automotive-intelligence'/g) || []).length).toBe(1);
     expect(registry).toContain("route: '/mobility/automotive'");
-    expect(registry).toContain("readiness: 'partial'");
+    expect(registry).toContain("readiness: 'external-gated'");
     expect(resolver).toContain("import { AutomotiveRoutes } from '../modules/automotive/AutomotiveRoutes';");
     expect(resolver).toContain("<RequireAtlasIdentity><AutomotiveRoutes /></RequireAtlasIdentity>");
   });
