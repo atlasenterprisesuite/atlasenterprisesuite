@@ -55,6 +55,7 @@ export function AtlasSovereignDeployPage() {
   const [selectedId, setSelectedId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [assessmentClock, setAssessmentClock] = useState(() => Date.now());
   const [deploymentDetails, setDeploymentDetails] = useState<DeploymentDetails | null>(null);
   const [deploymentMessage, setDeploymentMessage] = useState('');
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -88,7 +89,9 @@ export function AtlasSovereignDeployPage() {
         && typeof item.release_key === 'string'
         && typeof item.status === 'string'
       ));
-      setSnapshot({ organizationId: org.id, infra, releases: allowed, fetchedAt: Date.now() });
+      const fetchedAt = Date.now();
+      setSnapshot({ organizationId: org.id, infra, releases: allowed, fetchedAt });
+      setAssessmentClock(fetchedAt);
     } catch (reason) {
       if (token === generation.current) setError(safeError(reason));
     } finally {
@@ -98,7 +101,16 @@ export function AtlasSovereignDeployPage() {
 
   useEffect(() => {
     void synchronize();
-    return () => { generation.current += 1; detailsGeneration.current += 1; };
+    // A green assessment must not remain visible after 15 minutes of inactivity.
+    const updateClock = () => setAssessmentClock(Date.now());
+    const interval = window.setInterval(updateClock, 30_000);
+    window.addEventListener('focus', updateClock);
+    return () => {
+      generation.current += 1;
+      detailsGeneration.current += 1;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', updateClock);
+    };
   }, []);
 
   const selected = snapshot?.releases.find(item => item.id === selectedId)
@@ -150,7 +162,7 @@ export function AtlasSovereignDeployPage() {
         organizationId: snapshot.organizationId,
         infra: snapshot.infra,
         release: selected,
-        now: snapshot.fetchedAt
+        now: assessmentClock
       })
     : null;
 
