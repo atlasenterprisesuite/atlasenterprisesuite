@@ -4,18 +4,20 @@ import type { NoaaNormalizedResponse } from '../../../../../packages/analytics/s
 export type AtlasClimateNoaaResponse = NoaaNormalizedResponse & { ok: true; domain: 'climate' };
 
 /**
- * Read-only, permission-gated lookup. The server owns NOAA credentials, provenance,
+ * Read-only, permission-gated lookup. The server resolves verified site coordinates, controls NOAA requests, provenance,
  * authorization checks and normalization. No device location is read implicitly.
  */
-export async function readAtlasClimateNoaaAlerts(latitude: number, longitude: number): Promise<AtlasClimateNoaaResponse> {
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-      Math.abs(latitude) > 90 || Math.abs(longitude) > 180) throw new Error('invalid_coordinates');
+export async function readAtlasClimateNoaaAlerts(siteId: string): Promise<AtlasClimateNoaaResponse> {
+  if (typeof siteId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(siteId)) {
+    throw new Error('invalid_site_id');
+  }
   const organization = await getActiveAtlasOrganization();
-  // Private POST body avoids exposing exact site coordinates in ATLAS request URLs.
+  // Private POST body sends only a site ID; the server validates its tenant and verified coordinates.
   const response = await authorizedAtlasFetch('/functions/v1/atlas-platform-controls?api=climate-noaa-alerts', {
     method: 'POST',
     headers: { 'x-atlas-org-id': organization.id },
-    body: JSON.stringify({ latitude, longitude })
+    body: JSON.stringify({ site_id: siteId })
   });
   const raw: unknown = await response.json().catch(() => null);
   if (!response.ok) {
