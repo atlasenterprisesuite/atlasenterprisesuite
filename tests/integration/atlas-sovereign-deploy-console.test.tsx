@@ -21,7 +21,7 @@ const backend = vi.hoisted(() => ({
       blockers: [],
       evidence: { generated_at: new Date().toISOString() }
     };
-    return { releases: [{ id: 'release-1', release_key: 'atlas-web', status: 'promoted',
+    return { ok: true, releases: [{ id: 'release-1', release_key: 'atlas-web', status: 'promoted',
       channel: 'production', version: 'v1', source_ref: 'a'.repeat(40), updated_at: '2026-11-26T12:00:00Z' }] };
   })
 }));
