@@ -1,5 +1,5 @@
 /** ATLAS Climate Resilience 777 — evidence intake policy. No provider fetches or public alerts. */
-export type ClimateHazard = 'flood' | 'tropical-cyclone' | 'extreme-cold' | 'heat' | 'drought';
+export type ClimateHazard = 'flood' | 'tropical-cyclone' | 'extreme-cold' | 'heat' | 'drought' | 'severe-weather';
 export type ClimateEvidenceMode = 'observation' | 'forecast' | 'scenario';
 
 export type ClimateEvidence = {
@@ -28,7 +28,7 @@ export type ClimateIntakeResult = {
   mayPublishAlert: false;
 };
 
-const hazards = new Set<ClimateHazard>(['flood', 'tropical-cyclone', 'extreme-cold', 'heat', 'drought']);
+const hazards = new Set<ClimateHazard>(['flood', 'tropical-cyclone', 'extreme-cold', 'heat', 'drought', 'severe-weather']);
 const modes = new Set<ClimateEvidenceMode>(['observation', 'forecast', 'scenario']);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
