@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { evaluateInfrastructure } from '../_shared/infrastructure-readiness.ts';
+import { atlasInfraCorsHeaders, atlasInfraPreflightResponse } from './cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://ggmanzcgtlrvqfoccgsh.supabase.co';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -14,14 +15,15 @@ type Blocker = {
   detail: string;
 };
 
-const json = (data: unknown, status = 200) =>
+const json = (req: Request, data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'x-content-type-options': 'nosniff',
-      'referrer-policy': 'no-referrer'
+      'referrer-policy': 'no-referrer',
+      ...atlasInfraCorsHeaders(req.headers.get('origin'))
     }
   });
 
@@ -59,11 +61,20 @@ async function authorize(req: Request) {
     return { ok: false as const, status: 401, error: 'invalid_session' };
   }
 
-  const { data: memberships, error: membershipError } = await userClient
+  // Honor the exact active organization requested by the authenticated shell.
+  // Never silently use a different tenant's membership from a multi-org user.
+  const requestedOrgId = (req.headers.get('x-atlas-org-id') || '').trim();
+  if (requestedOrgId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedOrgId)) {
+    return { ok: false as const, status: 400, error: 'invalid_organization_id' };
+  }
+  const query = userClient
     .from('organization_members')
     .select('org_id,role,status')
-    .eq('status', 'active')
-    .limit(1);
+    .eq('user_id', userData.user.id)
+    .eq('status', 'active');
+  const { data: memberships, error: membershipError } = await (
+    requestedOrgId ? query.eq('org_id', requestedOrgId) : query
+  ).limit(1);
 
   if (membershipError || !memberships?.[0]) {
     return { ok: false as const, status: 403, error: 'active_organization_required' };
@@ -303,13 +314,16 @@ async function cloudflareState() {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return atlasInfraPreflightResponse(req);
+  }
   if (req.method !== 'GET') {
-    return json({ ok: false, error: 'method_not_allowed' }, 405);
+    return json(req, { ok: false, error: 'method_not_allowed' }, 405);
   }
 
   const auth = await authorize(req);
   if (!auth.ok) {
-    return json({ ok: false, error: auth.error }, auth.status);
+    return json(req, { ok: false, error: auth.error }, auth.status);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
@@ -446,7 +460,7 @@ Deno.serve(async (req: Request) => {
         ? 'blocked'
         : 'partial';
 
-  return json({
+  return json(req, {
     ok: true,
     service: 'atlas-infra-status',
     owner: 'atlas-sovereign-control-plane',
