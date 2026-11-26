@@ -74,4 +74,26 @@ describe('ATLAS Work Enterprise usage transparency UI', () => {
     expect(await screen.findByText(/No AI usage records were found/i)).toBeInTheDocument();
     expect(usage).toHaveBeenCalledTimes(2);
   });
+  it('shows a real allocated ledger while keeping paid execution blocked', async () => {
+    credits.mockResolvedValueOnce({
+      source: 'atlas_enterprise_credit_accounts',
+      status: 'allocated', period: '2026-11',
+      limitCredits: 11, reservedCredits: 3, spentCredits: 5,
+      availableCredits: 3, paidExecutionEnabled: false
+    });
+    render(<WorkPoliciesPage />);
+    expect(await screen.findByText('Allocated')).toBeInTheDocument();
+    expect(screen.getByText('11')).toBeInTheDocument();
+    expect(screen.getByText('3 / 5')).toBeInTheDocument();
+    expect(screen.getByText('Blocked until separately authorized')).toBeInTheDocument();
+    expect(screen.queryByText(/Ledger schema is not installed/i)).not.toBeInTheDocument();
+  });
+
+  it('preserves independently authorized usage when credit lookup fails', async () => {
+    credits.mockRejectedValueOnce(new Error('enterprise_credit_read_unavailable'));
+    render(<WorkPoliciesPage />);
+    expect(await screen.findByText(/Unable to verify credit ledger/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No AI usage records were found/i)).toBeInTheDocument();
+    expect(screen.getByText(/Spending remains blocked/i)).toBeInTheDocument();
+  });
 });
