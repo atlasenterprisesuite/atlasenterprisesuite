@@ -172,7 +172,19 @@ def render_personal_voice(
         raise PermissionError('personal_voice_authorization_denied')
     reference = reference_resolver(job)
     verify_reference(job, reference)
-    wav = engine.synthesize(job.text.strip(), language_id, reference.path)
+    # The private resolver's source may be rotated or cleaned up concurrently.
+    # Copy a bounded, checksum-verified snapshot into an isolated ephemeral dir.
+    # Never pass the long-lived storage reference directly to model inference.
+    with tempfile.TemporaryDirectory(prefix='atlas-private-voice-') as directory:
+        snapshot = Path(directory) / 'reference.wav'
+        with Path(reference.path).open('rb') as source:
+            audio_bytes = source.read(MAX_REFERENCE_BYTES + 1)
+        if len(audio_bytes) > MAX_REFERENCE_BYTES or not hmac.compare_digest(
+                hashlib.sha256(audio_bytes).hexdigest(), reference.sha256):
+            raise ValueError('personal_voice_reference_integrity_failed')
+        snapshot.write_bytes(audio_bytes)
+        snapshot.chmod(0o600)
+        wav = engine.synthesize(job.text.strip(), language_id, snapshot)
     if (not isinstance(wav, bytes) or not 44 < len(wav) <= MAX_OUTPUT_BYTES
         or wav[:4] != b'RIFF' or wav[8:12] != b'WAVE'):
         raise RuntimeError('personal_voice_invalid_audio')
