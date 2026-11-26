@@ -43,7 +43,7 @@ describe('ATLAS Verse sovereign release preflight', () => {
     expect(result.productionVerified).toBe(false);
   });
 
-  it('cannot override branch-required checks by calling them optional', () => {
+  it('blocks a checklist that contains no required check evidence', () => {
     const result = assessVersePreflight(base({
       checks: [{ name: 'Vercel – atlas_enterprise_suite', required: false, state: 'success' }]
     }));
