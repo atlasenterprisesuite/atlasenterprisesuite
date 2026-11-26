@@ -4,7 +4,10 @@ No private user audio, pretrained weights, external downloads, or provider charg
 """
 import hashlib
 import io
+import json
 import os
+import sys
+import types
 import tempfile
 import unittest
 import wave
@@ -17,6 +20,9 @@ from personal_voice_local import (
     PersonalVoiceJob,
     TrustedReference,
     personal_voice_readiness,
+    MODEL_REQUIRED_FILES,
+    MODEL_MANIFEST_NAME,
+    verified_model_directory,
     render_personal_voice,
     verify_reference,
 )
@@ -181,6 +187,100 @@ class PersonalVoiceLocalTests(unittest.TestCase):
             self.assertFalse(personal_voice_readiness()['offline_enforced'])
             with self.assertRaisesRegex(RuntimeError, 'offline_model_not_configured'):
                 ChatterboxV3Engine().synthesize('Hola', 'es', self.path)
+
+
+
+class ModelArtifactIntegrityTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.folder = Path(self.tmp.name)
+        self.digests = {}
+        for name in MODEL_REQUIRED_FILES:
+            body = ('test-artifact:' + name).encode()
+            (self.folder / name).write_bytes(body)
+            self.digests[name] = hashlib.sha256(body).hexdigest()
+        self.manifest_path = self.folder / MODEL_MANIFEST_NAME
+        self.update_manifest()
+        self.environment = {
+            'ATLAS_PERSONAL_VOICE_ENABLED': '1',
+            'HF_HUB_OFFLINE': '1',
+            'TRANSFORMERS_OFFLINE': '1',
+            'ATLAS_PERSONAL_VOICE_MODEL_DIR': str(self.folder),
+            'ATLAS_PERSONAL_VOICE_MANIFEST_SHA256': self.manifest_hash,
+            'ATLAS_PERSONAL_VOICE_DEVICE': 'cpu',
+        }
+
+    def update_manifest(self):
+        content = json.dumps({
+            'model': 'chatterbox_multilingual_v3', 't3_model': 'v3',
+            'files': self.digests,
+        }, sort_keys=True).encode()
+        self.manifest_path.write_bytes(content)
+        self.manifest_hash = hashlib.sha256(content).hexdigest()
+
+    def test_preinstalled_model_artifacts_are_pin_verified(self):
+        with patch.dict(os.environ, self.environment, clear=True):
+            self.assertEqual(verified_model_directory(), self.folder)
+
+    def test_altered_model_weight_is_rejected_before_inference(self):
+        self.folder.joinpath('t3_mtl23ls_v3.safetensors').write_bytes(b'tampered')
+        with patch.dict(os.environ, self.environment, clear=True):
+            with self.assertRaisesRegex(RuntimeError, 'file_integrity_failed'):
+                verified_model_directory()
+
+    def test_replaced_manifest_is_rejected_even_when_files_exist(self):
+        self.update_manifest()
+        self.manifest_path.write_bytes(b'{}')
+        with patch.dict(os.environ, self.environment, clear=True):
+            with self.assertRaisesRegex(RuntimeError, 'manifest_integrity_failed'):
+                verified_model_directory()
+
+    def test_symlinked_model_artifact_is_refused(self):
+        name = 've.pt'
+        target = self.folder / 'target'
+        target.write_bytes((self.folder / name).read_bytes())
+        (self.folder / name).unlink()
+        try:
+            (self.folder / name).symlink_to(target)
+        except (OSError, NotImplementedError):
+            self.skipTest('symlink unavailable')
+        with patch.dict(os.environ, self.environment, clear=True):
+            with self.assertRaisesRegex(RuntimeError, 'model_file_missing'):
+                verified_model_directory()
+
+    def test_no_snapshot_download_from_pretrained_is_called(self):
+        class FakeVoiceModel:
+            sr = 16000
+            def generate(self, text, language_id, audio_prompt_path):
+                return object()
+
+        class FakeChatterbox:
+            from_local_calls = []
+            @classmethod
+            def from_local(cls, directory, device, t3_model):
+                cls.from_local_calls.append((directory, device, t3_model))
+                return FakeVoiceModel()
+            @classmethod
+            def from_pretrained(cls, **kwargs):
+                raise AssertionError('snapshot_download is forbidden')
+
+        fake_torchaudio = types.ModuleType('torchaudio')
+        fake_torchaudio.save = lambda path, waveform, sample_rate: Path(path).write_bytes(synthetic_wav(seconds=1))
+        fake_package = types.ModuleType('chatterbox')
+        fake_package.__path__ = []
+        fake_multilingual = types.ModuleType('chatterbox.mtl_tts')
+        fake_multilingual.ChatterboxMultilingualTTS = FakeChatterbox
+        with patch.dict(os.environ, self.environment, clear=True):
+            with patch.dict(sys.modules, {
+                'torchaudio':fake_torchaudio,
+                'chatterbox':fake_package,
+                'chatterbox.mtl_tts':fake_multilingual,
+            }):
+                output = ChatterboxV3Engine().synthesize('Hola', 'es', self.folder / 'reference.wav')
+        self.assertTrue(output.startswith(b'RIFF'))
+        self.assertEqual(FakeChatterbox.from_local_calls, [(self.folder,'cpu','v3')])
+
 
 
 if __name__ == '__main__':
