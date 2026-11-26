@@ -146,14 +146,17 @@ a server-side **offline job primitive**, not a public HTTP endpoint:
    owner/profile/organization/tenant IDs, consent version and exact SHA-256.
    Refuse symlinks, mismatch, unsupported PCM WAV, duration outside 5–30s,
    corrupt data and unexpected content hash.
-4. Only then can an injected engine synthesize. `ChatterboxV3Engine` uses
+4. Recopy a SHA-verified snapshot into a restrictive ephemeral directory;
+   inference reads the snapshot, never the resolver's long-lived file path.
+   The snapshot is cleaned up after inference, including error paths.
+5. Only then can an injected engine synthesize. `ChatterboxV3Engine` uses
    `ChatterboxMultilingualTTS.from_pretrained(device=..., t3_model='v3')`
    and `generate(text, language_id=..., audio_prompt_path=...)`.
-5. `ATLAS_PERSONAL_VOICE_ENABLED=1`, `HF_HUB_OFFLINE=1` and
+6. `ATLAS_PERSONAL_VOICE_ENABLED=1`, `HF_HUB_OFFLINE=1` and
    `TRANSFORMERS_OFFLINE=1` are mandatory before attempting loading.
    The model weights and Python dependencies must already be installed in
    a reviewed private runtime; this PR never downloads or installs them.
-6. Check output WAV bytes and re-read authorization after inference.
+7. Check output WAV bytes and re-read authorization after inference.
    No audio is returned when permission was revoked during generation.
 
 The initial request-language mapping is ES/EN (es-ES, es-MX, en-US, en-GB).
