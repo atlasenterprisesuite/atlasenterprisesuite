@@ -1,0 +1,302 @@
+{
+  "schema": "atlas.sensor.technical-reference.v1",
+  "id": "bosch-sensortec-bme688",
+  "canonicalModule": "knowledge",
+  "relatedModules": [
+    "science",
+    "connected-devices",
+    "iot"
+  ],
+  "title": "Bosch Sensortec BME688",
+  "manufacturer": "Bosch Sensortec",
+  "componentType": "4-in-1 MEMS environmental gas sensor",
+  "review": {
+    "date": "2026-11-23",
+    "status": "official_sources_reviewed_not_hardware_verified",
+    "evidence": "manufacturer_product_and_datasheet",
+    "restrictions": [
+      "Do not claim hardware connected or calibrated",
+      "Not a certified gas-safety alarm, direct CO2 meter, medical or laboratory analyzer",
+      "No live or simulated readings represented as actual samples"
+    ]
+  },
+  "sources": [
+    {
+      "id": "product",
+      "url": "https://www.bosch-sensortec.com/en/products/environmental-sensors/gas-sensors/bme688/",
+      "publisher": "Bosch Sensortec",
+      "type": "manufacturer_product_page",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "datasheet",
+      "url": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme688-ds000.pdf",
+      "publisher": "Bosch Sensortec",
+      "type": "datasheet",
+      "document": "BST-BME688-DS000-03",
+      "revision": "1.3",
+      "published": "2024-02",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "software",
+      "url": "https://www.bosch-sensortec.com/en/software-tools/software/bme688-and-bme690-software",
+      "publisher": "Bosch Sensortec",
+      "type": "software_downloads",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "getting-started",
+      "url": "https://www.bosch-sensortec.com/software/bme/docs/overview/getting-started.html",
+      "publisher": "Bosch Sensortec",
+      "type": "training_walkthrough",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "docs",
+      "url": "https://www.bosch-sensortec.com/software/bme/docs/",
+      "publisher": "Bosch Sensortec",
+      "type": "software_documentation",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "driver",
+      "url": "https://github.com/boschsensortec/BME68x_SensorAPI",
+      "publisher": "Bosch Sensortec",
+      "type": "source_code_repository",
+      "license": "BSD-3-Clause",
+      "verifiedOn": "2026-11-23"
+    },
+    {
+      "id": "faqs",
+      "url": "https://community.bosch-sensortec.com/knowledge-base-pg631enp/post/faqs---bme688-frapiOR0MlU5Sxb",
+      "publisher": "Bosch Sensortec",
+      "type": "manufacturer_faq",
+      "verifiedOn": "2026-11-23"
+    }
+  ],
+  "channels": [
+    {
+      "id": "temperature",
+      "quantity": "ambient_temperature",
+      "unit": "celsius",
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    {
+      "id": "humidity",
+      "quantity": "relative_humidity",
+      "unit": "percent",
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    {
+      "id": "pressure",
+      "quantity": "barometric_pressure",
+      "unit": "hectopascal",
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    {
+      "id": "gas",
+      "quantity": "gas_resistance_and_pattern",
+      "unit": "ohms_or_model_output",
+      "sourceIds": [
+        "datasheet",
+        "software"
+      ]
+    }
+  ],
+  "specifications": {
+    "package": {
+      "pins": 8,
+      "type": "metal_lid_LGA",
+      "widthMm": 3,
+      "heightMm": 3,
+      "thicknessMm": 0.93,
+      "sourceIds": [
+        "datasheet"
+      ]
+    },
+    "operating": {
+      "temperatureC": [
+        -40,
+        85
+      ],
+      "humidityPercent": [
+        0,
+        100
+      ],
+      "pressureHpa": [
+        300,
+        1100
+      ],
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    "electrical": {
+      "vddVolt": [
+        1.71,
+        3.6
+      ],
+      "vddioVolt": [
+        1.2,
+        3.6
+      ],
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    "bus": {
+      "interfaces": [
+        "I2C",
+        "SPI"
+      ],
+      "i2cAddressesHex": [
+        "0x76",
+        "0x77"
+      ],
+      "i2cMaxMhz": 3.4,
+      "spiMaxMhz": 10,
+      "sourceIds": [
+        "datasheet"
+      ]
+    },
+    "consumption": {
+      "humidityTemperature1HzUa": 2.1,
+      "humidityPressureTemperature1HzUa": 3.7,
+      "standardGasScanMa": 3.9,
+      "standardGasScanSeconds": 10.8,
+      "sourceIds": [
+        "product",
+        "datasheet"
+      ]
+    },
+    "accuracy": {
+      "humidityTolerancePercentRH": 3,
+      "temperatureToleranceC_0to65": 0.5,
+      "sourceIds": [
+        "datasheet"
+      ]
+    }
+  },
+  "interpretation": {
+    "directSignals": [
+      "temperature",
+      "relative_humidity",
+      "pressure",
+      "gas_resistance"
+    ],
+    "softwareDerived": [
+      "IAQ",
+      "breath_VOC_equivalent",
+      "CO2_equivalent",
+      "gas_scan_classification"
+    ],
+    "directCO2Measurement": false,
+    "arbitraryCompoundIdentification": false,
+    "note": "Gas signatures and classification depend on trained models, exposure context, environmental effects, calibration strategy and independent validation.",
+    "sourceIds": [
+      "datasheet",
+      "software",
+      "getting-started",
+      "faqs"
+    ]
+  },
+  "firmwareSoftware": {
+    "sensorAPI": {
+      "repository": "https://github.com/boschsensortec/BME68x_SensorAPI",
+      "license": "BSD-3-Clause",
+      "role": "low_level_driver"
+    },
+    "bsec": {
+      "role": "signal_processing_and_configurable_gas_model",
+      "advertisedVersion": "3.3.0.1",
+      "asOf": "2026-08",
+      "license": "manufacturer_license_terms_must_be_reviewed_before_distribution"
+    },
+    "aiStudio": {
+      "role": "capture_label_train_evaluate_export",
+      "advertisedWindowsVersion": "3.2.1",
+      "asOf": "2026-08"
+    },
+    "sources": [
+      "software",
+      "docs",
+      "driver"
+    ]
+  },
+  "proposedHardware": {
+    "prototype": "single_BME688_breakout_with_ESP32_3v3",
+    "required": [
+      "BME688 breakout compatible with 3.3 V logic",
+      "ESP32 3.3 V development board",
+      "USB power/data cable",
+      "I2C Qwiic/STEMMA QT cable or properly wired jumper leads"
+    ],
+    "nominalWiring": [
+      {
+        "sensor": "VCC or VIN",
+        "controller": "3V3",
+        "note": "Only when the breakout is rated for 3.3 V input"
+      },
+      {
+        "sensor": "GND",
+        "controller": "GND"
+      },
+      {
+        "sensor": "SDA",
+        "controller": "configured ESP32 I2C SDA"
+      },
+      {
+        "sensor": "SCL",
+        "controller": "configured ESP32 I2C SCL"
+      }
+    ],
+    "constraints": [
+      "Do not connect 5 V directly to a bare BME688 IC",
+      "Read the exact breakout pinout before energizing",
+      "Confirm SDA/SCL labels and address 0x76 or 0x77"
+    ],
+    "validation": [
+      "I2C presence confirmed on selected address",
+      "Direct channels report plausible ambient changes",
+      "No trained gas recognition claim without labeled evaluation"
+    ],
+    "referenceSourceIds": [
+      "datasheet",
+      "driver",
+      "getting-started"
+    ]
+  },
+  "safeProofOfConcept": {
+    "classes": [
+      "ordinary_room_air",
+      "ground_coffee_aroma"
+    ],
+    "manufacturerExample": "Bosch AI-Studio getting-started demonstrates separating coffee-related odor from ordinary air using labeled specimens.",
+    "status": "experimental_protocol_not_executed",
+    "prohibitions": [
+      "Do not use flammable, toxic or unknown gases to validate",
+      "Do not use it as a safety alarm"
+    ],
+    "sourceIds": [
+      "getting-started"
+    ]
+  },
+  "runtime": {
+    "connected": false,
+    "deviceCount": 0,
+    "observationsCount": 0,
+    "productionVerified": false
+  }
+}

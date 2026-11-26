@@ -1,0 +1,48 @@
+name: ATLAS BME688 Isolated PG17 Integrity
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bme688-pg17-integrity.yml'
+      - 'docs/ops/sql/atlas_bme688_atomic_ingest_candidate.sql'
+      - 'tests/postgres/bme688-*'
+      - 'tests/node/bme688-*'
+      - 'tools/local-agent/lib/bme688-*'
+      - 'tools/local-agent/tests/bme688-*'
+      - 'supabase/functions/atlas-local-control/index.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  pg17-integrity:
+    name: PostgreSQL 17 / tenant + replay + rollback (synthetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ephemeral-ci-only
+          POSTGRES_DB: atlas_ci
+        options: >-
+          --health-cmd "pg_isready -U postgres -d atlas_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source contract tests
+        run: |
+          node --test tests/node/bme688-source-catalog.test.mjs \
+            tests/node/bme688-atomic-ingest-contract.test.mjs \
+            tools/local-agent/tests/bme688-telemetry.test.mjs
+      - name: Real PostgreSQL 17 isolated tests
+        shell: bash
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: bash tests/postgres/bme688-pg17-verify.sh

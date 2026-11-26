@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 import { createGitHubOidcScope } from '../_shared/github-oidc-scope.ts';
+import { normalizeBme688Frame } from '../../../tools/local-agent/lib/bme688-telemetry.mjs';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -768,6 +769,47 @@ async function agentOperation(req: Request, body: JsonObject, operation: string)
     if (!command) throw new EdgeError('claimed_command_not_found', 404);
     await appendEvent(admin, { orgId, agentId, deviceId: String(command.device_id), commandId, eventType: success ? 'command.succeeded' : 'command.failed', severity: success ? 'info' : 'error', success, safeDetail: errorCode ? { error_code: errorCode } : {} });
     return json(req, { ok: true });
+  }
+
+
+  if (operation === 'agent.sensors.bme688.ingest') {
+    // Only the existing server-verified Local Agent session establishes identity and org.
+    // A sender cannot set org_id/tenant_id/provenance or invoke the privileged RPC itself.
+    const allowedBodyKeys = new Set(['operation', 'device_id', 'binding_id', 'frame']);
+    if (Object.keys(body).some((key) => !allowedBodyKeys.has(key))) {
+      throw new EdgeError('bme688_request_fields_rejected', 422);
+    }
+    const deviceId = requiredText(body.device_id, 'bme688_device_id_required', 80);
+    const bindingId = requiredText(body.binding_id, 'bme688_binding_id_required', 80);
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(deviceId) || !uuidPattern.test(bindingId)) {
+      throw new EdgeError('bme688_invalid_device_binding_id', 422);
+    }
+    let frame;
+    try {
+      frame = normalizeBme688Frame(body.frame, { now: new Date() });
+    } catch {
+      throw new EdgeError('bme688_invalid_frame', 422);
+    }
+    const { data: inserted, error: ingestionError } = await admin.rpc('atlas_ingest_bme688', {
+      p_session_id: String(context.session.id),
+      p_agent_id: agentId,
+      p_device_id: deviceId,
+      p_binding_id: bindingId,
+      p_sequence: frame.sequence,
+      p_observed_at: frame.observed_at,
+      p_temperature_c: frame.temperature_c,
+      p_humidity_percent: frame.humidity_percent,
+      p_pressure_hpa: frame.pressure_hpa,
+      p_gas_resistance_ohm: frame.gas_resistance_ohm
+    });
+    if (ingestionError) {
+      // Never echo SQL errors or request data. RPC must exist and grant only service_role.
+      if (ingestionError.code === 'P0001') throw new EdgeError('bme688_ingest_denied', 409);
+      throw new EdgeError('bme688_ingest_unavailable', 503);
+    }
+    if (inserted !== 4) throw new EdgeError('bme688_ingest_incomplete', 503);
+    return json(req, { ok: true, ingested_metrics: 4, status: 'authenticated_agent_observations' }, 201);
   }
 
   if (operation === 'agent.events.append') {
