@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ExecutionConfiguration } from './ExecutionConfiguration';
-import { getEnterpriseUsage, type EnterpriseUsageReport } from './api';
+import { getEnterpriseCreditStatus, getEnterpriseUsage, type EnterpriseCreditStatus, type EnterpriseUsageReport } from './api';
 import { WorkSubnav } from './WorkSubnav';
 
 function recordedAt(value: string) {
@@ -9,6 +9,9 @@ function recordedAt(value: string) {
 
 export function WorkPoliciesPage() {
   const [report, setReport] = useState<EnterpriseUsageReport | null>(null);
+  const [credit, setCredit] = useState<EnterpriseCreditStatus | null>(null);
+  const [creditError, setCreditError] = useState<string | null>(null);
+  const [creditLoading, setCreditLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -28,6 +31,21 @@ export function WorkPoliciesPage() {
     return () => { active = false; };
   }, [refreshKey]);
 
+  useEffect(() => {
+    let active = true;
+    setCreditLoading(true);
+    setCreditError(null);
+    void getEnterpriseCreditStatus()
+      .then((next) => { if (active) setCredit(next); })
+      .catch((caught) => {
+        if (!active) return;
+        setCredit(null);
+        setCreditError(caught instanceof Error ? caught.message : 'enterprise_credit_unavailable');
+      })
+      .finally(() => { if (active) setCreditLoading(false); });
+    return () => { active = false; };
+  }, [refreshKey]);
+
   return (
     <section className="work-page page-stack">
       <header className="page-header"><p className="eyebrow">ATLAS Work Soberano</p><h1>Policies</h1><p>Current fail-closed defaults for new Work workflows. Provider authorization, permissions and approvals remain server-authoritative.</p></header>
@@ -40,9 +58,24 @@ export function WorkPoliciesPage() {
       <section className="execution-panel" aria-labelledby="enterprise-usage-title">
         <h2 id="enterprise-usage-title">Enterprise usage transparency</h2>
         <p>Only your recorded AI requests for your authenticated organization are retrieved. This is not a credit balance or a billing statement.</p>
-        <p className="notice">No paid AI credits are authorized by this Enterprise reporting control. Credit limits are not configured in this integration; quota debit and collaborative sharing remain disabled.</p>
-        <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
-          {loading ? 'Loading…' : 'Refresh recorded activity'}
+        <p className="notice">No paid AI credits are authorized by this Enterprise reporting control. A recorded balance never grants permission to call a provider; quota debit and collaborative sharing remain gated.</p>
+        {creditLoading ? <p role="status" aria-live="polite">Checking authenticated credit ledger status…</p> : null}
+        {creditError ? <p role="alert" className="work-error">Unable to verify credit ledger: {creditError}. Spending remains blocked.</p> : null}
+        {credit && (credit.status === 'unconfigured' || credit.status === 'not_installed')
+          ? <p className="notice">Credit limits are not configured in this integration. {credit.status === 'not_installed' ? 'The ledger schema is not installed.' : 'No allocation exists for this UTC month.'}</p>
+          : null}
+        {credit ? (
+          <dl className="work-preview-facts" aria-label="Authenticated credit ledger">
+            <div><dt>Ledger status</dt><dd>{credit.status === 'allocated' ? 'Allocated' : credit.status === 'disabled' ? 'Disabled' : credit.status === 'not_installed' ? 'Not installed' : 'Not configured'}</dd></div>
+            <div><dt>Period</dt><dd>{credit.period}</dd></div>
+            <div><dt>Internal credit limit</dt><dd>{credit.limitCredits ?? '—'}</dd></div>
+            <div><dt>Reserved / used</dt><dd>{credit.reservedCredits ?? '—'} / {credit.spentCredits ?? '—'}</dd></div>
+            <div><dt>Available internal credits</dt><dd>{credit.availableCredits ?? '—'}</dd></div>
+            <div><dt>Paid provider execution</dt><dd>Blocked until separately authorized</dd></div>
+          </dl>
+        ) : null}
+        <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading || creditLoading}>
+          {loading || creditLoading ? 'Loading…' : 'Refresh recorded activity'}
         </button>
         {loading ? <p role="status" aria-live="polite">Loading authenticated usage…</p> : null}
         {error ? <p role="alert" className="work-error">Unable to verify usage: {error}. No activity or credit balance is being inferred.</p> : null}
@@ -51,7 +84,6 @@ export function WorkPoliciesPage() {
             <dl className="work-preview-facts">
               <div><dt>UTC month</dt><dd>{report.period}</dd></div>
               <div><dt>Recorded requests</dt><dd>{report.eventCount.toLocaleString()}</dd></div>
-              <div><dt>Credit limit</dt><dd>Not configured</dd></div>
               <div><dt>Paid execution</dt><dd>Not authorized by this control</dd></div>
             </dl>
             <h3>Recent recorded activity</h3>
