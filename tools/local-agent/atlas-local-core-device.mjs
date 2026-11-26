@@ -2,7 +2,8 @@
 /** ATLAS Local Core device entrypoint. No hidden cloud access. */
 import { emitKeypressEvents } from 'node:readline';
 import { memoryPut, memoryGet, memoryList, memoryDelete, vaultDirectory } from './lib/local-core-vault.mjs';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync, statfsSync } from 'node:fs';
+import { arch, cpus, totalmem, freemem } from 'node:os';
 import { generateLocalCompletion, MAX_PROMPT_CHARS } from './lib/local-core-client.mjs';
 
 function hidden(prompt) {
@@ -34,12 +35,37 @@ async function run() {
   if (command === 'doctor') {
     const dir = vaultDirectory();
     const modelFile = process.env.ATLAS_LOCAL_AI_MODEL_FILE;
+    let storageAvailableBytes = null;
+    try {
+      const fs = statfsSync(existsSync(dir) ? dir : process.cwd(), { bigint: true });
+      const available = fs.bavail * fs.bsize;
+      if (available >= 0n && available <= BigInt(Number.MAX_SAFE_INTEGER)) storageAvailableBytes = Number(available);
+    } catch { /* unavailable is not zero */ }
+    let modelSizeBytes = null;
+    try {
+      const info = modelFile ? statSync(modelFile) : null;
+      if (info?.isFile()) modelSizeBytes = info.size;
+    } catch { /* absent or inaccessible */ }
+    const processors = cpus();
     const report = {
+      hardware: {
+        architecture: arch(),
+        cpu: processors[0]?.model || null,
+        logicalCores: processors.length,
+        totalMemoryBytes: totalmem(),
+        freeMemoryBytes: freemem(),
+        storageAvailableBytes,
+        gpu: null,
+        npu: null,
+        modelSizeBytes,
+        compatibilityVerified: false,
+        modelIntegrityVerified: false
+      },
       platform: process.platform,
       node22OrNewer: Number(process.versions.node.split('.')[0]) >= 22,
       privateDirectoryInstalled: existsSync(dir),
-      localModelFileAvailable: Boolean(modelFile && existsSync(modelFile)),
-      localRuntimeConfigured: Boolean(process.env.ATLAS_LOCAL_AI_TOKEN && modelFile && existsSync(modelFile)),
+      localModelFileAvailable: modelSizeBytes !== null,
+      localRuntimeConfigured: Boolean(process.env.ATLAS_LOCAL_AI_TOKEN && modelSizeBytes !== null),
       sovereignRuntimeOfflineDefault: true,
       modelInferenceVerified: false,
       remoteDeviceValidated: false
