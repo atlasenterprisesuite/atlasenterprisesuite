@@ -41,6 +41,12 @@ A lockfile prevents concurrent writes; atomic file replacement reduces risk of p
 
 The installer does not install llama-server or GGUF model files. Separately obtain an authentic compatible model and trusted llama.cpp binary, then privately configure ATLAS_LOCAL_AI_BINARY, ATLAS_LOCAL_AI_MODEL_FILE, and a random ATLAS_LOCAL_AI_TOKEN. Launch atlas-local-core runtime in a local terminal. In another terminal with the same token, pipe a prompt to atlas-local-core ask. The local client has no automatic cloud fallback and refuses non-loopback API URLs; the Wave 2 runtime command refuses a non-loopback ATLAS_LOCAL_AI_HOST value.
 
+## Sovereign personal runtime profile (Phase 0)
+
+For the owner's independent personal AI, `atlas-local-core runtime` explicitly enables strict offline mode, requires an already-present local GGUF model path, and rejects model-repository downloads. The underlying launcher validates numeric loopback bindings even when executed directly, so `0.0.0.0` and LAN addresses fail before spawning the model server. The standard governed self-hosted bootstrap remains separate and is not converted into an offline-only provider.
+
+See [ATLAS Sovereign Personal AI Phase 0](ATLAS_SOVEREIGN_PERSONAL_PHASE0.md) for usage, privacy limits and outstanding physical-device P0 evidence.
+
 ## Remaining gates
 
 1. Test suite: node --test tools/local-agent/tests/*.test.mjs and Bash parser.
