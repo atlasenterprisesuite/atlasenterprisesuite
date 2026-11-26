@@ -51,7 +51,7 @@ export function MusicChatHistoryPanel() {
       setError('Select at most 40 extracted JSON parts per local preview.');
       return;
     }
-    if (files.some(file => !/\\.json$/i.test(file.name))) {
+    if (files.some(file => !/\.json$/i.test(file.name))) {
       setError('Choose the extracted conversations JSON file, not a ZIP archive. No data was uploaded.');
       return;
     }
