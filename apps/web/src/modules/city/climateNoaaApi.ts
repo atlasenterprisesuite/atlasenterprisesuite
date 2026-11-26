@@ -11,14 +11,11 @@ export async function readAtlasClimateNoaaAlerts(latitude: number, longitude: nu
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
       Math.abs(latitude) > 90 || Math.abs(longitude) > 180) throw new Error('invalid_coordinates');
   const organization = await getActiveAtlasOrganization();
-  const params = new URLSearchParams({
-    api: 'climate-noaa-alerts',
-    latitude: latitude.toFixed(4),
-    longitude: longitude.toFixed(4)
-  });
-  const response = await authorizedAtlasFetch('/functions/v1/atlas-platform-controls?' + params.toString(), {
-    method: 'GET',
-    headers: { 'x-atlas-org-id': organization.id }
+  // Private POST body avoids exposing exact site coordinates in ATLAS request URLs.
+  const response = await authorizedAtlasFetch('/functions/v1/atlas-platform-controls?api=climate-noaa-alerts', {
+    method: 'POST',
+    headers: { 'x-atlas-org-id': organization.id },
+    body: JSON.stringify({ latitude, longitude })
   });
   const raw: unknown = await response.json().catch(() => null);
   if (!response.ok) {
