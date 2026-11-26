@@ -26,6 +26,7 @@ const verified: UrbanTwinEntity = {
 };
 const pending = { ...verified, id: 'pending-location', name: 'Unverified facility', verification_state: 'unverified' as const };
 const noPosition = { ...verified, id: 'unknown-location', name: 'Missing coordinates', latitude: null, longitude: null };
+const retired = { ...verified, id: 'retired-site', name: 'Retired facility', lifecycle_state: 'retired' };
 const data = (status: 'complete' | 'partial' = 'complete'): AtlasClimateNoaaResponse => ({
   ok: true,
   domain: 'climate',
@@ -47,12 +48,13 @@ afterEach(cleanup);
 
 describe('ATLAS climate NOAA panel — user-directed and truthful', () => {
   it('does not fetch or request device geolocation on render', () => {
-    render(<ClimateNoaaPanel entities={[verified, pending, noPosition]} />);
+    render(<ClimateNoaaPanel entities={[verified, pending, noPosition, retired]} />);
     expect(mockedRead).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: /consult NOAA/i })).toBeDisabled();
     expect(screen.getByRole('option', { name: 'Verified campus' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Unverified facility' })).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Missing coordinates' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Retired facility' })).not.toBeInTheDocument();
   });
 
   it('shows a constrained no-alerts result only after an explicit click', async () => {
@@ -62,7 +64,7 @@ describe('ATLAS climate NOAA panel — user-directed and truthful', () => {
       target: { value: 'verified-location' }
     });
     fireEvent.click(screen.getByRole('button', { name: /consult NOAA/i }));
-    expect(mockedRead).toHaveBeenCalledWith(28.5, -81.3);
+    expect(mockedRead).toHaveBeenCalledWith('verified-location');
     expect(await screen.findByText(/No active NWS alerts were returned/i)).toBeInTheDocument();
     expect(screen.getByText(/not proof that an area is safe/i)).toBeInTheDocument();
   });
