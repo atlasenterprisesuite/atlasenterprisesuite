@@ -5,6 +5,7 @@ const edge = readFileSync('supabase/functions/atlas-execution/index.ts','utf8');
 const service = readFileSync('supabase/functions/atlas-execution/enterprise-usage.ts','utf8');
 const client = readFileSync('apps/web/src/work/api.ts','utf8');
 const page = readFileSync('apps/web/src/work/WorkPoliciesPage.tsx','utf8');
+const credits = readFileSync('supabase/functions/atlas-execution/enterprise-credit-read.ts','utf8');
 
 describe('ATLAS Enterprise usage vertical integration', () => {
   it('reuses authenticated organization resolution and requires read permission', () => {
@@ -29,5 +30,19 @@ describe('ATLAS Enterprise usage vertical integration', () => {
     expect(page).toContain('No paid AI credits are authorized');
     expect(page).toContain('Credit limits are not configured');
     expect(page).toContain('Recent recorded activity');
+  });
+
+  it('registers a server-authenticated, organization-scoped credit status read without client authority', () => {
+    expect(edge).toContain("'get_enterprise_credit_status'");
+    expect(edge).toContain("if (operation === 'get_enterprise_credit_status') {");
+    expect(edge).toContain("requireExecutionPermission(context, 'execution.read');");
+    expect(edge).toContain('readEnterpriseCreditStatus({ admin: adminClient(), context })');
+    expect(credits).toContain(".eq('org_id', context.orgId)");
+    expect(credits).toContain(".eq('user_id', context.userId)");
+    expect(credits).not.toContain("body.user_id");
+    expect(credits).not.toContain(".insert(");
+    expect(credits).not.toContain(".update(");
+    expect(page).toContain('getEnterpriseCreditStatus');
+    expect(page).toContain('Blocked until separately authorized');
   });
 });
