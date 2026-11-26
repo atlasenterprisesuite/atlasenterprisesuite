@@ -1,0 +1,53 @@
+name: ATLAS Climate PostgreSQL Gate
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261126100000_atlas_climate_read_gate.sql'
+      - 'tests/climate/**'
+      - '.github/workflows/atlas-climate-postgres.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  climate-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: climate-ci-disposable-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      ATLAS_CLIMATE_ISOLATED_TEST_DB: 'true'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGUSER: 'postgres'
+      PGPASSWORD: 'climate-ci-disposable-only'
+      PGDATABASE: 'postgres'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client available
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+      - name: Create disposable schema and roles
+        run: psql -v ON_ERROR_STOP=1 -f tests/climate/postgres-bootstrap.sql
+      - name: Apply the exact PR migration to disposable database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261126100000_atlas_climate_read_gate.sql
+      - name: Test seven parallel requests and mandatory audit rollback
+        run: bash tests/climate/check-postgres-gate.sh
