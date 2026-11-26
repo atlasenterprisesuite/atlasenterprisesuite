@@ -259,3 +259,46 @@ export async function getEnterpriseUsage(): Promise<EnterpriseUsageReport> {
     paidExecutionEnabled: false
   };
 }
+
+/** Server-observed ledger status. A credit allocation never permits spending. */
+export type EnterpriseCreditStatus = {
+  source: 'atlas_enterprise_credit_accounts';
+  status: 'not_installed' | 'unconfigured' | 'disabled' | 'allocated';
+  period: string;
+  limitCredits: number | null;
+  reservedCredits: number | null;
+  spentCredits: number | null;
+  availableCredits: number | null;
+  paidExecutionEnabled: false;
+};
+
+export async function getEnterpriseCreditStatus(): Promise<EnterpriseCreditStatus> {
+  const response = await workPost({ operation: 'get_enterprise_credit_status' });
+  const value = record(response.credit);
+  const statuses = ['not_installed', 'unconfigured', 'disabled', 'allocated'];
+  if (response.ok !== true || value.source !== 'atlas_enterprise_credit_accounts' ||
+      !statuses.includes(value.status) || typeof value.period !== 'string' ||
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(value.period) || value.paidExecutionEnabled !== false) {
+    throw new Error('enterprise_credit_status_invalid');
+  }
+  const fields = ['limitCredits', 'reservedCredits', 'spentCredits', 'availableCredits'] as const;
+  if (value.status !== 'disabled' && value.status !== 'allocated') {
+    if (fields.some((field) => value[field] !== null)) {
+      throw new Error('enterprise_credit_unconfigured_balance_invalid');
+    }
+  } else {
+    if (fields.some((field) => !Number.isSafeInteger(value[field]) || value[field] < 0) ||
+        value.limitCredits !== value.reservedCredits + value.spentCredits + value.availableCredits) {
+      throw new Error('enterprise_credit_balance_invalid');
+    }
+  }
+  return {
+    source: 'atlas_enterprise_credit_accounts', status: value.status,
+    period: value.period,
+    limitCredits: value.limitCredits,
+    reservedCredits: value.reservedCredits,
+    spentCredits: value.spentCredits,
+    availableCredits: value.availableCredits,
+    paidExecutionEnabled: false
+  };
+}
