@@ -350,20 +350,22 @@ async function handleUrbanTwin(req: Request, api: string) {
 
 
 /** ATLAS Climate: US NWS active-alert lookup (read-only). No public alert publication. */
-async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
+async function handleClimateNoaaAlerts(req: Request) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: urbanTwinCors(req) });
-  if (req.method !== 'GET') return urbanTwinFail(req, 'method_not_allowed', 405);
+  if (req.method !== 'POST') return urbanTwinFail(req, 'method_not_allowed', 405);
   try {
     // Reuse ATLAS identity, verified active organization membership, and RBAC.
     const ctx = await urbanTwinContext(req);
     await urbanTwinPermission(ctx, 'climate.read');
-    const latText = endpoint.searchParams.get('latitude') || '';
-    const lonText = endpoint.searchParams.get('longitude') || '';
-    const decimal = /^-?\d{1,3}(?:\.\d{1,6})?$/;
-    if (!decimal.test(latText) || !decimal.test(lonText)) return urbanTwinFail(req, 'invalid_coordinates', 422);
-    const latitude = Number(latText);
-    const longitude = Number(lonText);
-    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 ||
+    // Coordinates travel in the authenticated request body, not in ATLAS access-log URLs.
+    let coords: unknown;
+    try { coords = await req.json(); } catch { return urbanTwinFail(req, 'invalid_json', 400); }
+    if (!coords || typeof coords !== 'object' || Array.isArray(coords)) return urbanTwinFail(req, 'invalid_coordinates', 422);
+    const rawCoords = coords as Record<string, unknown>;
+    const latitude = rawCoords.latitude;
+    const longitude = rawCoords.longitude;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' ||
+        !Number.isFinite(latitude) || Math.abs(latitude) > 90 ||
         !Number.isFinite(longitude) || Math.abs(longitude) > 180) return urbanTwinFail(req, 'invalid_coordinates', 422);
 
     // One durable organization-wide quota reservation and audit, before upstream calls.
@@ -376,7 +378,7 @@ async function handleClimateNoaaAlerts(req: Request, endpoint: URL) {
 
     // Fixed destination, bounded request; never accept a provider URL from the caller.
     const point = latitude.toFixed(4) + ',' + longitude.toFixed(4);
-    const sourceUrl = 'https://api.weather.gov/alerts/active?point=' + encodeURIComponent(point);
+    const sourceUrl = 'https://api.weather.gov/alerts?active=true&point=' + encodeURIComponent(point);
     const response = await fetch(sourceUrl, {
       method: 'GET',
       headers: {
@@ -445,7 +447,7 @@ Deno.serve(async (req: Request) => {
   const u = new globalThis.URL(req.url);
   const api = u.searchParams.get('api');
   if ((api || '').startsWith('urban-twin-')) return await handleUrbanTwin(req, api || '');
-  if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req, u);
+  if (api === 'climate-noaa-alerts') return await handleClimateNoaaAlerts(req);
   if (req.method === 'GET' && api === 'readiness') return json({ ok: true, service: 'atlas-platform-controls', version: VERSION, source_of_runtime_truth: 'supabase', github_required: false, domains: ['integrations','agents','voice'], checked_at: new Date().toISOString() });
   if (req.method !== 'POST') return fail('method_not_allowed', 405);
   let body: any = {}; try { body = await req.json(); } catch { return fail('invalid_json', 400); }
