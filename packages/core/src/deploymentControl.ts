@@ -222,3 +222,114 @@ export type AtlasProviderAdapter = {
     sourceSha: string;
   }): Promise<AtlasDeploymentEvidence>;
 };
+
+/**
+ * ATLAS Deploy read-model (not a deployment runner). An owner-scoped release row
+ * and a current ATLAS Manager snapshot are necessary to start release review.
+ * Neither proves the exact release is live. Production truth is resolved by
+ * the existing runtime verifier / master evidence registry, never by this UI.
+ */
+export type AtlasSovereignInfraSnapshot = {
+  scope?: { organization_id?: string | null };
+  canonical_repository?: string;
+  production_readiness?: string;
+  provider_requirements?: Partial<Record<'github' | 'supabase' | 'cloudflare' | 'production' | 'vercel', boolean>>;
+  provider_status?: Partial<Record<'github' | 'supabase' | 'cloudflare' | 'production' | 'vercel', {
+    state?: string;
+    required?: boolean;
+  }>>;
+  blockers?: readonly { stage?: string; code?: string }[];
+  evidence?: { generated_at?: string };
+};
+
+export type AtlasSovereignReleaseSummary = {
+  id: string;
+  release_key: string;
+  status: string;
+  channel: string;
+  source_ref: string | null;
+};
+
+export type AtlasSovereignDeployReadiness = {
+  status: 'blocked' | 'review_required';
+  blockers: string[];
+  targetSha: string | null;
+  verifiedProduction: false;
+  providerStates: Record<'github' | 'supabase' | 'cloudflare' | 'production' | 'vercel', string>;
+};
+
+const SOVEREIGN_REQUIRED_PROVIDERS = ['supabase', 'cloudflare', 'production'] as const;
+const SHA40 = /^[a-f0-9]{40}$/i;
+
+/**
+ * Fail closed on missing, stale, cross-tenant or non-canonical evidence.
+ * Vercel is not used as a production dependency. A review_required result
+ * means only that a human may inspect release/evidence; not that deployment,
+ * promotion or exact-SHA production verification occurred.
+ */
+export function evaluateAtlasSovereignDeployReadiness(input: {
+  organizationId: string;
+  infra: AtlasSovereignInfraSnapshot | null;
+  release: AtlasSovereignReleaseSummary | null;
+  now: number;
+}): AtlasSovereignDeployReadiness {
+  const { infra, release, organizationId, now } = input;
+  const blockers: string[] = [];
+  const providerStates = {
+    github: infra?.provider_status?.github?.state ?? 'unknown',
+    supabase: infra?.provider_status?.supabase?.state ?? 'unknown',
+    cloudflare: infra?.provider_status?.cloudflare?.state ?? 'unknown',
+    production: infra?.provider_status?.production?.state ?? 'unknown',
+    vercel: 'optional'
+  };
+
+  if (!infra) blockers.push('infrastructure_evidence_missing');
+  if (!organizationId.trim() || infra?.scope?.organization_id !== organizationId) {
+    blockers.push('organization_scope_mismatch');
+  }
+  if (infra?.canonical_repository !== 'atlasenterprisesuite/atlasenterprisesuite') {
+    blockers.push('canonical_repository_mismatch');
+  }
+
+  const generated = Date.parse(infra?.evidence?.generated_at ?? '');
+  const ageMs = now - generated;
+  if (!Number.isFinite(now) || !Number.isFinite(generated) || ageMs < -120_000 || ageMs > 15 * 60_000) {
+    blockers.push('infrastructure_evidence_stale');
+  }
+  if (infra?.production_readiness !== 'ready') blockers.push('infrastructure_not_ready');
+
+  for (const provider of SOVEREIGN_REQUIRED_PROVIDERS) {
+    if (infra?.provider_requirements?.[provider] !== true || providerStates[provider] !== 'ready') {
+      blockers.push(`required_${provider}_not_ready`);
+    }
+  }
+  if (infra?.provider_requirements?.vercel === true || infra?.provider_status?.vercel?.required === true) {
+    blockers.push('legacy_vercel_required');
+  }
+
+  for (const blocker of infra?.blockers ?? []) {
+    const stage = typeof blocker.stage === 'string' ? blocker.stage : 'unknown';
+    if (stage === 'vercel' && infra?.provider_requirements?.vercel !== true) continue;
+    blockers.push(`infrastructure_blocker_${stage.replace(/[^a-z-]/gi, '').slice(0, 30) || 'unknown'}`);
+  }
+
+  let targetSha: string | null = null;
+  if (!release) {
+    blockers.push('release_not_selected');
+  } else {
+    const source = release.source_ref?.trim() ?? '';
+    if (SHA40.test(source)) targetSha = source.toLowerCase();
+    else blockers.push('release_source_sha_missing');
+    if (release.status !== 'promoted' || release.channel !== 'production') {
+      blockers.push('release_not_promoted');
+    }
+  }
+
+  return {
+    status: blockers.length ? 'blocked' : 'review_required',
+    blockers: [...new Set(blockers)],
+    targetSha,
+    verifiedProduction: false,
+    providerStates
+  };
+}
