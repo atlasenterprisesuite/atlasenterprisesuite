@@ -26,6 +26,10 @@ describe('ATLAS Spatial Forge Creator Edge integration source contract', () => {
     expect(handler).not.toContain('body.nativePreviewVerified');
     expect(handler).not.toContain('body.approvedSpendCents');
     expect(handler).not.toContain('fetch(');
+    expect(handler).toContain("spatial_request_too_large");
+    expect(handler).toContain('maxPayloadBytes = 2048');
+    expect(handler).toContain('reader.read()');
+    expect(handler).toContain("Object.keys(decoded).length !== 1");
   });
 
   it('declares the response as a transient procedural model, never a saved neural asset', () => {
