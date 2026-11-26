@@ -95,3 +95,32 @@ the secure, revocable Voice-to-Native transport is completed.
 
 No external provider fees or uploads are required for the generic TTS.
 Runtime deployment and real production synthesis remain P0 pending.
+
+## RUN 010 — authenticated Voice Studio → local native speech
+
+The native generic WAV engine now has a server-side adapter inside the **existing**
+`atlas-voice-provider` Edge Function and a first-party client surface.
+No independent platform, identity authority or new payment provider was introduced.
+
+- `GET /functions/v1/atlas-voice-provider?api=status&provider=atlas_native_generic`
+  authenticates `voice.personal.read`, checks the self-hosted Composer readiness
+  and reports `synthesis_verified:false` until generation actually succeeds.
+- `POST /functions/v1/atlas-voice-provider?api=speech&provider=atlas_native_generic`
+  authenticates `voice.personal.use`, enforces explicit `mode:generic`, exact
+  locale/rate/text limits, stores metadata-only audit before and after synthesis,
+  rechecks identity and permissions before delivering audio, checks WAV headers
+  and stamps synthetic-generic disclosure. It never selects a clone or paid fallback.
+- `AtlasVoiceApi` provides authenticated methods; `AtlasNativeNarration`
+  presents local speech **before** optional ElevenLabs in existing Voice Studio.
+  The UI cannot generate when runtime readiness is unavailable. Audio is a
+  browser-local object URL, revoked on exit or next generation.
+- Tests cover validation, response provenance, upstream errors, tenant-selected
+  headers, UI readiness gates and audit routing.
+- Composer secret names reuse `ATLAS_NATIVE_COMPOSER_URL` and
+  `ATLAS_NATIVE_COMPOSER_TOKEN`; they must be configured privately for the
+  Voice Provider runtime, not added to public Git.
+
+**P0 release blockers:** deployed Edge version, self-hosted Composer configuration,
+real authenticated E2E, per-tenant concurrency/quotas, CPU/memory cost limits,
+revocation race tests, and genuine user-owned multilingual clone evaluation.
+Passing build/CI cannot establish these production properties.
