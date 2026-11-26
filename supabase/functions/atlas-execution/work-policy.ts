@@ -1,6 +1,6 @@
 import { parseAtlasWorkContext } from '../../../packages/execution/src/work-types.ts';
 import { selectExecutionRoute } from '../../../packages/execution/src/work-routing.ts';
-import { evaluateWorkActionPolicy, type WorkActionSensitivity } from '../../../packages/execution/src/work-policy.ts';
+import { evaluateWorkActionPolicy, parseNonnegativePaidCost, type WorkActionSensitivity } from '../../../packages/execution/src/work-policy.ts';
 import { runtimeIsHealthy } from '../../../packages/execution/src/work-runtime.ts';
 
 export class WorkPolicyResolutionError extends Error {
@@ -27,11 +27,6 @@ function record(value: unknown): Record<string, any> {
 
 function bool(value: unknown) {
   return value === true;
-}
-
-function nonnegativeNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function sensitivity(value: unknown): WorkActionSensitivity {
@@ -158,7 +153,7 @@ export async function evaluateWorkStepServer({ admin, context, taskId }: Evaluat
     sensitivity: sensitivity(execution.sensitivity),
     reversible: mutation ? bool(execution.reversible) : true,
     mutation,
-    paidCost: nonnegativeNumber(execution.paid_cost),
+    paidCost: parseNonnegativePaidCost(execution.paid_cost),
     budgetLimit: work.budgetLimit,
     permissionsSatisfied,
     envelopeAllowed,

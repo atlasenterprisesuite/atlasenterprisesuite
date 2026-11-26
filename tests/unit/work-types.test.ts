@@ -13,7 +13,15 @@ it('normalizes safe Work metadata and drops unexpected secret-like keys', () => 
   });
 });
 
-it('preserves an explicit null budget and defaults malformed budgets to zero', () => {
+it('preserves an explicit null budget and defaults omitted budgets to zero', () => {
   expect(parseAtlasWorkContext({ work: { budgetLimit: null } }).budgetLimit).toBeNull();
-  expect(parseAtlasWorkContext({ work: { budgetLimit: 'bad' } }).budgetLimit).toBe(0);
+  expect(parseAtlasWorkContext({ work: {} }).budgetLimit).toBe(0);
+});
+
+it('rejects explicitly invalid budgets without coercion', () => {
+  for (const budgetLimit of ['bad', '0', '', false, {}, [], -1, NaN, Infinity, -Infinity]) {
+    expect(() => parseAtlasWorkContext({ work: { budgetLimit } })).toThrow('invalid_budget_limit');
+  }
+  expect(parseAtlasWorkContext({ work: { budgetLimit: 0 } }).budgetLimit).toBe(0);
+  expect(parseAtlasWorkContext({ work: { budgetLimit: 1.5 } }).budgetLimit).toBe(1.5);
 });

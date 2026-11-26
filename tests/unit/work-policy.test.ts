@@ -34,3 +34,38 @@ it('allows permitted read-only work regardless of autonomy mode', () => {
     paidCost: 0, budgetLimit: 0, permissionsSatisfied: true, envelopeAllowed: true, regulated: false
   })).toMatchObject({ outcome: 'allow', reason: 'read_only_action_allowed' });
 });
+
+it('fails closed for unknown, negative or non-finite paid costs', () => {
+  const base = {
+    autonomyLevel: 'autonomous' as const, sensitivity: 'low' as const,
+    reversible: true, mutation: true, budgetLimit: 0,
+    permissionsSatisfied: true, envelopeAllowed: true, regulated: false
+  };
+  for (const paidCost of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1]) {
+    expect(evaluateWorkActionPolicy({ ...base, paidCost })).toMatchObject({
+      outcome: 'deny', reason: 'invalid_paid_cost'
+    });
+  }
+});
+
+it('fails closed when an invalid budget is supplied', () => {
+  const base = {
+    autonomyLevel: 'autonomous' as const, sensitivity: 'low' as const,
+    reversible: true, mutation: true, paidCost: 0,
+    permissionsSatisfied: true, envelopeAllowed: true, regulated: false
+  };
+  for (const budgetLimit of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1]) {
+    expect(evaluateWorkActionPolicy({ ...base, budgetLimit })).toMatchObject({
+      outcome: 'deny', reason: 'invalid_budget_limit'
+    });
+  }
+});
+
+it('parses only explicit nonnegative finite paid cost estimates', async () => {
+  const { parseNonnegativePaidCost } = await import('../../packages/execution/src/work-policy');
+  expect(parseNonnegativePaidCost(0)).toBe(0);
+  expect(parseNonnegativePaidCost(1.5)).toBe(1.5);
+  for (const invalid of [undefined, null, '', '0', '12', -1, Number.NaN, Number.POSITIVE_INFINITY, {}, false]) {
+    expect(Number.isNaN(parseNonnegativePaidCost(invalid))).toBe(true);
+  }
+});
