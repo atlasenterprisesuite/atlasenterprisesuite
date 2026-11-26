@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const backend = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(async () => ({ id: 'tenant-A', role: 'owner' })),
   atlasAuthorizedJson: vi.fn(async (path: string) => {
+    if (path.includes('/rpc/has_identity_permission')) return true;
     if (path.includes('api=deployments')) return {
       ok: true, deployments: [{ id: 'deploy-1', status: 'awaiting_gates', environment: 'production' }]
     };
@@ -71,6 +72,15 @@ describe('ATLAS Deploy native cloud console', () => {
     } finally {
       clock.mockRestore();
     }
+  });
+
+  it('opens the controlled release draft write panel on a user gesture without opening a deploy action', async () => {
+    render(<MemoryRouter><AtlasSovereignDeployPage /></MemoryRouter>);
+    await screen.findByText(/Review required — not production verified/i);
+    expect(screen.queryByRole('button', { name: 'Create release draft' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Enable controlled writes' }));
+    expect(await screen.findByRole('button', { name: 'Create release draft' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /promote|deploy production/i })).not.toBeInTheDocument();
   });
 
   it('blocks when identity cannot be established; cannot present synthetic data', async () => {
