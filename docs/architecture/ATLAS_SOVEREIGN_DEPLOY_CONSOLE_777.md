@@ -1,6 +1,6 @@
 # ATLAS Deploy — Sovereign Cloud Console (777 REVIEW)
 
-**Status:** draft PR, not merged and not deployed. This is a real, authenticated **read-only control surface**, NOT a replacement hosting runtime or permission to mutate infrastructure.
+**Status:** draft PR, not merged and not deployed. This is an authenticated **read and controlled draft-write console**. It is NOT a replacement hosting runtime or an authorization to deploy, promote, roll back, change infrastructure, or bypass production gates.
 
 ## Goal
 
@@ -24,20 +24,35 @@ Provide a single ATLAS-owned deployment interface inside the existing `/cloud` p
 4. Treat Vercel as an optional, unused legacy provider. If Vercel becomes required against the sovereign path, fail closed rather than silently accepting it. Optional legacy failures cannot block the required sovereign path.
 5. Do not claim any release has reached **verified production** from an infrastructure summary or a green CI status. That requires authoritative exact-SHA runtime and Master Evidence Registry checks by existing release services.
 6. Error, revoked auth, missing org, cross-tenant result, stale/invalid provider evidence, no release, noncanonical source SHA, or required provider outage => blocked, no stale data shown.
-7. Links to existing Release Control, Manager readiness, production verification, domains and incidents provide execution/review workflows; this slice issues no POST writes, no deployment triggers, no expenses and no public data leak.
+7. Links to existing Release Control, Manager readiness, production verification, domains and incidents provide execution/review workflows; this slice uses POST solely for authenticated permission checking and explicitly requested **release-create** drafts. It has no deployment triggers, provider mutations, expenses, or public data leaks.
+
+## RUN 008 — Read and controlled-write scope
+
+The read surface still uses the existing tenant-scoped `atlas-infra-status`, `atlas-release-control`, `atlasSession` and deployment-gates APIs. A separate opt-in write panel opens on **Enable controlled writes**.
+
+- On opening the panel, use authenticated `has_identity_permission(o,p)` with `p = releases.create` and the active org ID from `getActiveAtlasOrganization`. No local role/flag grants permission.
+- Before each write, re-resolve the authenticated org, verify it matches the snapshot, recheck the server permission and enforce 15-minute evidence freshness. Revoked permissions fail closed.
+- Validate release key, version, channel, exact 40-character Git source SHA, and a separate **real 64-character artifact SHA-256**. Refuse blank or placeholder digests; never invent an artifact.
+- Build one Cloudflare `web_bundle` component. The existing backend requires at least one component and checks its fields; empty components would be rejected.
+- Submit one `atlas-release-control?api=release-create` POST only after **Create release draft** is explicitly selected. The existing server enforces `releases.create` and writes via the original `atlas_create_release_draft` RPC. No client service-role credential is used.
+- The organization ID comes from the authenticated backend context, not the draft body. The returned ID is used to refresh and select the draft; it does not certify production.
+- No `deployment-create`, `deployment-promote`, rollback, or approvals actions exist in this UI. Privileged MFA and release P0 gates remain obligatory.
+- The submitted checksum is provenance **claimed by the submitter**. Existing verification gates must independently validate it before release advancement.
+
+All tests use synthetic commit hashes and checksums. This code change alone does not mutate the production database.
 
 ## Readiness and release gates
 
 | Level | Gate | Status |
 | --- | --- | --- |
 | P0 | Cross-tenant / stale / missing / provider-not-ready evidence blocked | Unit tests authored; CI pending |
-| P0 | UI authenticates through ATLAS session; GET-only authorized APIs | Integration tests authored; CI pending |
+| P0 | UI authenticates through ATLAS session; GET reads and protected create-draft POST only | Integration tests authored; CI pending |
 | P0 | Vercel is not required, no external Vercel dependency | Static/code review + unit tests; CI pending |
 | P0 | Build/typecheck, route integration, security, accessibility, exact-SHA CI | Pending |
 | P0 | Manual E2E on Cloudflare with authenticated org, MFA, RLS and real release evidence | Not run |
 | P0 | Production exact-SHA verified through existing runtime verifier | Not run; NO-GO |
 | P1 | New provider-neutral immutable preview/runtime deployment worker | Later slice, unimplemented |
-| P1 | Scoped deployment operations, approvals, rollback and audit UI | Reuse existing Release Control, later integration |
+| P1 | Promotion, deployment, rollback and further privileged write UI | Retain existing Release Control approvals; not enabled in ATLAS Deploy |
 | P1 | Separate ATLAS Music Universe #1119 release candidate | Independent draft PR, must not auto-merge or deploy |
 
 **No app or workflow called 'Verse', Vercel clone, or new private deployment service is introduced.** This uses the existing ATLAS Deploy Control Plane with Cloudflare as the production edge.
