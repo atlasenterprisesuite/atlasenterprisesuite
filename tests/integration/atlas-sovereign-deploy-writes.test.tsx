@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const backend = vi.hoisted(() => ({
   getActiveAtlasOrganization: vi.fn(async () => ({ id: 'tenant-A', role: 'owner' })),
@@ -16,11 +16,11 @@ vi.mock('../../apps/web/src/lib/atlasSession', () => backend);
 
 import { AtlasDeployDraftComposer } from '../../apps/web/src/modules/cloud/AtlasDeployDraftComposer';
 
-const now = Date.parse('2026-11-26T12:00:00.000Z');
+const now = Date.now();
 const infra = () => ({
   scope: { organization_id: 'tenant-A' },
   canonical_repository: 'atlasenterprisesuite/atlasenterprisesuite',
-  evidence: { generated_at: '2026-11-26T11:59:00.000Z' }
+  evidence: { generated_at: new Date(now - 60_000).toISOString() }
 });
 const props = () => ({
   organizationId: 'tenant-A',
@@ -36,7 +36,17 @@ function fillValidForm() {
   fireEvent.change(screen.getByLabelText('Artifact SHA-256 (64 hex)'), { target: { value: 'b'.repeat(64) } });
 }
 
-afterEach(() => { vi.resetAllMocks(); });
+beforeEach(() => {
+  backend.getActiveAtlasOrganization.mockReset().mockImplementation(async () => ({ id: 'tenant-A', role: 'owner' }));
+  backend.atlasAuthorizedJson.mockReset().mockImplementation(async (path: string) => {
+    if (path.endsWith('/rpc/has_identity_permission')) return true;
+    if (path.includes('api=release-create')) return {
+      ok: true, release_id: '11111111-1111-4111-8111-111111111111'
+    };
+    throw new Error('unexpected_backend_path');
+  });
+});
+afterEach(() => { vi.clearAllMocks(); });
 
 describe('ATLAS Deploy permissions and authenticated draft writes', () => {
   it('checks the server-side permission and writes exactly one Cloudflare draft after explicit submit', async () => {
