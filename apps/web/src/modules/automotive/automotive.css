@@ -1,0 +1,23 @@
+.automotive-intelligence-page { max-width: 1200px; margin-inline: auto; }
+.automotive-workflow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; }
+.automotive-intelligence-page .workspace-card { min-width: 0; }
+.automotive-intelligence-page input[type="file"], .automotive-intelligence-page select {
+  max-width: 100%; width: 100%; box-sizing: border-box; padding: .75rem;
+  border: 1px solid var(--atlas-border, #64748b); border-radius: .6rem;
+  color: inherit; background: var(--atlas-surface-1, transparent);
+}
+.automotive-intelligence-page input:focus-visible, .automotive-intelligence-page select:focus-visible,
+.automotive-intelligence-page button:focus-visible, .automotive-intelligence-page a:focus-visible {
+  outline: 3px solid #38bdf8; outline-offset: 3px;
+}
+.automotive-preview { margin: 1rem 0; }
+.automotive-preview img { display: block; max-width: 100%; max-height: 360px; object-fit: contain; border-radius: .6rem; }
+.automotive-preview figcaption { overflow-wrap: anywhere; font-size: .9rem; margin-top: .5rem; }
+.automotive-empty { padding: 1rem; border: 1px dashed var(--atlas-border, #64748b); border-radius: .5rem; }
+.automotive-manual-state { margin-top: 1rem; }
+.automotive-source { display: block; margin-top: .3rem; font-size: .85rem; overflow-wrap: anywhere; }
+.automotive-intelligence-page table { width: 100%; border-collapse: collapse; }
+.automotive-intelligence-page th, .automotive-intelligence-page td { padding: .75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--atlas-border, #64748b); }
+@media (max-width: 600px) {
+  .automotive-intelligence-page th, .automotive-intelligence-page td { padding: .5rem; font-size: .9rem; }
+}
