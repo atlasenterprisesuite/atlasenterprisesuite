@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyInstrument, assessResearchLink } from '../../packages/pay/src/monetaryResearch';
+import { classifyInstrument, assessResearchLink } from '../../packages/pay/src';
 
 describe('ATLAS monetary research (read only)', () => {
   it('distinguishes money, instruments and infrastructure', () => {
