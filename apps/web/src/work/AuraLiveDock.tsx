@@ -10,7 +10,7 @@ export function AuraLiveDock(){
  const [status,setStatus]=useState('Not synchronized');
  const generation=useRef(0);
  useEffect(()=>{
-  const reset=()=>{generation.current++;setAuthenticated(Boolean(getAtlasAccessToken()));setData(null);setStatus('Session changed — synchronize again');};
+  const reset=()=>{generation.current++;setAuthenticated(Boolean(getAtlasAccessToken()));setOpen(false);setData(null);setStatus('Session changed — synchronize again');};
   window.addEventListener(ATLAS_SESSION_EVENT,reset);
   window.addEventListener('storage',reset);
   return ()=>{generation.current++;window.removeEventListener(ATLAS_SESSION_EVENT,reset);window.removeEventListener('storage',reset);};
