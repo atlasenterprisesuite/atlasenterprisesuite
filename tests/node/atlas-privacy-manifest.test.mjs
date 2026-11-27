@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { evaluatePrivacyManifest } from '../../packages/execution/src/privacy-manifest.mjs';
+const entry = {category:'contact',purpose:'account',linked:true,recipient:'local',retentionDays:30};
+const manifest = {schema:'atlas.privacy.v1',module:'identity',collection:[entry]};
+test('valid declarations are not runtime proof',()=>assert.deepEqual(evaluatePrivacyManifest(manifest),{status:'declared',labels:['linked'],verified:false}));
+test('empty collection remains declaration only',()=>assert.deepEqual(evaluatePrivacyManifest({...manifest,collection:[]}),{status:'declared',labels:['none_declared'],verified:false}));
+test('unknown schema fails closed',()=>assert.equal(evaluatePrivacyManifest({...manifest,schema:'v2'}).status,'blocked'));
+test('tracking is prohibited',()=>assert.equal(evaluatePrivacyManifest({...manifest,collection:[{...entry,purpose:'tracking'}]}).status,'blocked'));
+test('unknown categories and recipients fail closed',()=>{for(const e of [{...entry,category:'unknown'},{...entry,recipient:'external'}])assert.equal(evaluatePrivacyManifest({...manifest,collection:[e]}).status,'blocked');});
+test('invalid retention and linkage fail closed',()=>{for(const e of [{...entry,retentionDays:Infinity},{...entry,retentionDays:0},{...entry,linked:'false'}])assert.equal(evaluatePrivacyManifest({...manifest,collection:[e]}).status,'blocked');});
+test('unknown fields cannot be silently accepted',()=>assert.equal(evaluatePrivacyManifest({...manifest,collection:[{...entry,extra:true}]}).status,'blocked'));
+test('malformed manifests fail closed',()=>{for(const m of [null,[],{...manifest,collection:[null]},{...manifest,module:''}])assert.equal(evaluatePrivacyManifest(m).status,'blocked');});
+test('mixed declarations retain both labels',()=>assert.deepEqual(evaluatePrivacyManifest({...manifest,collection:[entry,{...entry,linked:false}]}).labels,['linked','unlinked_declared']));
