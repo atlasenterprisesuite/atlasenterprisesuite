@@ -23,7 +23,9 @@ export function AuraLiveDock(){
   setData(null);setStatus('Synchronizing');
   try{
    const org=await getActiveAtlasOrganization();
+   if(ticket!==generation.current || !getAtlasAccessToken())return;
    const rows=await listWorkflows();
+   if(ticket!==generation.current || !getAtlasAccessToken())return;
    const current=await getActiveAtlasOrganization();
    if(ticket!==generation.current)return;
    if(!getAtlasAccessToken()||org.id!==current.id)throw new Error('scope_changed');
@@ -33,7 +35,7 @@ export function AuraLiveDock(){
  }
  useEffect(()=>{
   if(!open||!authenticated)return;
-  const tick=()=>{if(document.visibilityState==='visible')void refresh();};
+  const tick=()=>{if(document.visibilityState==='visible')void refresh();else {generation.current++;setData(null);setStatus('Paused — page hidden');}};
   tick();
   const timer=window.setInterval(tick,30000);
   document.addEventListener('visibilitychange',tick);
