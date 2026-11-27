@@ -1,0 +1,25 @@
+.atlas-sound-lab{margin-block:24px;border-color:#416f94;background:radial-gradient(circle at 85% 0%,#143a5e55,transparent 42%),#101425}
+.atlas-sound-lab header h2{font-size:clamp(22px,3vw,32px);margin:6px 0 10px;color:#f5f8ff}
+.atlas-sound-lab header p:not(.eyebrow){margin:0;max-width:800px;line-height:1.6;color:#c7d5e5}
+.atlas-sound-controls,.atlas-sound-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.atlas-sound-controls label,.atlas-sound-actions label{font-weight:650;color:#dbe8f6}
+.atlas-sound-controls select,.atlas-sound-actions select{min-height:44px;max-width:100%;padding:9px 12px;color:#f6f8ff;border:1px solid #6285a8;border-radius:10px;background:#17263b}
+.atlas-sound-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.atlas-sound-options button{text-align:left;display:grid;gap:7px;min-height:98px;padding:16px;border:1px solid #526682;border-radius:14px;color:#f4f8ff;background:#1d2b40;cursor:pointer}
+.atlas-sound-options button span{font-size:13px;color:#c9d4e6;line-height:1.5}
+.atlas-sound-options button.selected{background:#173c53;border:2px solid #8de5fd;padding:15px}
+.atlas-sound-selected{display:grid;gap:8px;border:1px solid #416e8d;border-radius:12px;background:#0b2436;padding:16px;line-height:1.5;color:#d3ecf8}
+.atlas-sound-selected strong{color:#fff}
+.atlas-sound-actions button{min-height:44px;border:1px solid #5c95b0;border-radius:10px;background:#16445f;color:#fff;padding:10px 16px;cursor:pointer}
+.atlas-sound-actions button:disabled{opacity:.5;cursor:not-allowed}
+.atlas-sound-status{margin:0;line-height:1.5;color:#aae9e3}
+.atlas-sound-lab :is(button,select):focus-visible{outline:3px solid #a2e6fb;outline-offset:3px}
+@media(max-width:540px){.atlas-sound-controls,.atlas-sound-actions{display:grid;grid-template-columns:1fr}.atlas-sound-controls select,.atlas-sound-actions select,.atlas-sound-actions button{width:100%}}
+
+.atlas-sound-references{border-top:1px solid #3d5671;padding-top:14px}
+.atlas-sound-references h3{margin:0 0 8px;color:#f4f8ff}
+.atlas-sound-references p{margin:0 0 12px;color:#c7d5e5;line-height:1.6}
+.atlas-sound-references ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin:0;padding:0}
+.atlas-sound-references li{display:grid;gap:7px;padding:14px;border:1px solid #405d78;border-radius:12px;background:#18293d}
+.atlas-sound-references li span{color:#d1dced;line-height:1.5}
+.atlas-sound-references li small{color:#abc9d3}
