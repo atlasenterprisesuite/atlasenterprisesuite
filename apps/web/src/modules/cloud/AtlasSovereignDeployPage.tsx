@@ -7,6 +7,7 @@ import {
   type AtlasSovereignReleaseSummary
 } from '../../../../../packages/core/src/deploymentControl';
 import { CloudSubnav } from './AtlasCloudNextLevel';
+import { assessVersePreflight, parseVerseChecks } from './versePreflight';
 import { AtlasDeployDraftComposer } from './AtlasDeployDraftComposer';
 
 type ReleaseRow = AtlasSovereignReleaseSummary & {
@@ -49,6 +50,34 @@ const REQUIRED = ['supabase', 'cloudflare', 'production'] as const;
 
 function safeError(reason: unknown): string {
   return reason instanceof Error ? reason.message : 'sovereign_deploy_evidence_unavailable';
+}
+
+function SovereignPreflight({ expectedSha }: { expectedSha: string }) {
+  const [observedSha, setObservedSha] = useState('');
+  const [deploymentId, setDeploymentId] = useState('');
+  const [checks, setChecks] = useState('');
+  const [build, setBuild] = useState(false);
+  const [runtime, setRuntime] = useState(false);
+  const [report, setReport] = useState('');
+  const invalidate = () => setReport('');
+  return <section className="atlas-cloud-toolbox" aria-label="Verse preflight">
+    <h2>Verse · Manual release preflight</h2>
+    <p>Operator input only. Never certifies production or authorizes deployment.</p>
+    <form onSubmit={event => {
+      event.preventDefault();
+      const parsed = parseVerseChecks(checks);
+      setReport(JSON.stringify(parsed.errors.length ? {status:'blocked', productionVerified:false, errors:parsed.errors} : assessVersePreflight({expectedSha, observedSha, deploymentId, environment:'production', provider:'cloudflare', build:build?'success':'unknown', runtime:runtime?'success':'unknown', checks:parsed.checks}), null, 2));
+    }}>
+      <label>Expected source SHA<input readOnly value={expectedSha}/></label>
+      <label>Observed SHA<input value={observedSha} maxLength={40} onChange={e=>{setObservedSha(e.target.value);invalidate();}}/></label>
+      <label>Deployment ID<input value={deploymentId} maxLength={200} onChange={e=>{setDeploymentId(e.target.value);invalidate();}}/></label>
+      <label>Checks (required|name|success)<textarea value={checks} maxLength={10000} onChange={e=>{setChecks(e.target.value);invalidate();}}/></label>
+      <label><input type="checkbox" checked={build} onChange={e=>{setBuild(e.target.checked);invalidate();}}/>Operator reports build success</label>
+      <label><input type="checkbox" checked={runtime} onChange={e=>{setRuntime(e.target.checked);invalidate();}}/>Operator reports runtime success</label>
+      <button type="submit">Evaluate preflight</button>
+    </form>
+    {report && <pre role="status" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{report}</pre>}
+  </section>;
 }
 
 export function AtlasSovereignDeployPage() {
@@ -213,6 +242,7 @@ export function AtlasSovereignDeployPage() {
                 disabled={snapshot.releases.length === 0}
                 onChange={event => {
                   setSelectedId(event.target.value);
+                  setLoadingDetails(false);
                   detailsGeneration.current += 1;
                   setDeploymentDetails(null);
                   setDeploymentMessage('');
@@ -251,6 +281,7 @@ export function AtlasSovereignDeployPage() {
             <p className="atlas-cloud-truth-note">Backend snapshot time: {snapshot.infra.evidence?.generated_at || 'unknown'}. No CI result, dashboard status, or provider configuration automatically proves production deployment.</p>
           </section>
 
+          <SovereignPreflight key={snapshot.organizationId + ":" + (selected?.id ?? "") + ":" + (assessment.targetSha ?? "")} expectedSha={assessment.targetSha ?? ""} />
           <section className="atlas-cloud-toolbox" aria-labelledby="atlas-deploy-gates-title">
             <h2 id="atlas-deploy-gates-title">Deployment attempts and gates</h2>
             <p>Read existing Release Control evaluations for the selected release. A passing gate does not itself prove the public runtime serves this commit.</p>
