@@ -76,3 +76,52 @@ describe('ATLAS Local DJ crossfade playback lifecycle', () => {
     expect(report).not.toHaveBeenCalled();
   });
 });
+
+describe('ATLAS playback generation isolation', () => {
+  it('pauses a pending successor immediately on stop and ignores its stale completion', async () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const report = vi.fn();
+    const session = new LocalCrossfadeSession(tracks, 6, report);
+    let resolveNext: () => void = () => {};
+    try {
+      await session.start();
+      vi.spyOn(StubAudio.prototype, 'play').mockImplementationOnce(
+        () => new Promise<void>(resolve => { resolveNext = resolve; })
+      );
+      const pending = session.next();
+      const successor = StubAudio.created[1];
+      session.stop();
+      expect(successor.pause).toHaveBeenCalled();
+      report.mockClear();
+      await session.start();
+      resolveNext();
+      await pending;
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenLastCalledWith(0, 'playing', expect.any(String));
+      expect(StubAudio.created[2].pause).not.toHaveBeenCalled();
+    } finally {
+      session.stop();
+    }
+  });
+
+  it('ignores an older initial play rejection after a new start', async () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const report = vi.fn();
+    const session = new LocalCrossfadeSession(tracks, 6, report);
+    let rejectOld: (reason?: unknown) => void = () => {};
+    vi.spyOn(StubAudio.prototype, 'play').mockImplementationOnce(
+      () => new Promise<void>((_resolve, reject) => { rejectOld = reject; })
+    );
+    try {
+      const old = session.start();
+      await session.start();
+      rejectOld(new Error('interrupted'));
+      await old;
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenLastCalledWith(0, 'playing', expect.any(String));
+      expect(StubAudio.created[1].pause).not.toHaveBeenCalled();
+    } finally {
+      session.stop();
+    }
+  });
+});
