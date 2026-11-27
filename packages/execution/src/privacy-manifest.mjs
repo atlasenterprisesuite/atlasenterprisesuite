@@ -22,3 +22,40 @@ export function evaluatePrivacyManifest(value) {
   }
   return {status:'declared',labels:labels.size ? [...labels].sort() : ['none_declared'],verified:false};
 }
+
+// Metadata reconciliation only: never reads personal records or grants permission.
+// Callers must obtain authenticated, tenant-scoped evidence separately.
+export function reconcilePrivacyInventory(serialized) {
+  const deny = reason => ({status:'blocked',reason,verified:false,authorization:'not_evaluated'});
+  if (typeof serialized !== 'string' || serialized.length > 1000000) return deny('invalid_envelope');
+  let input;
+  try { input = JSON.parse(serialized); } catch { return deny('invalid_envelope'); }
+  if (!exactKeys(input,['manifests','observations']) ||
+      !Array.isArray(input.manifests) || !input.manifests.length || input.manifests.length > 256 ||
+      !Array.isArray(input.observations) || input.observations.length > 4096) return deny('invalid_envelope');
+  const registry = new Map();
+  for (const manifest of input.manifests) {
+    if (evaluatePrivacyManifest(manifest).status !== 'declared') return deny('invalid_manifest');
+    if (registry.has(manifest.module)) return deny('duplicate_module');
+    registry.set(manifest.module,manifest.collection);
+  }
+  const seen = new Set();
+  const covered = new Set();
+  for (const row of input.observations) {
+    if (!exactKeys(row,['module','category','purpose','linked','recipient','retentionDays'])) return deny('invalid_observation');
+    const {module,...collection} = row;
+    if (evaluatePrivacyManifest({schema:'atlas.privacy.v1',module,collection:[collection]}).status !== 'declared') return deny('invalid_observation');
+    const entries = registry.get(module);
+    if (!entries) return deny('undeclared_observation');
+    const matches = entries.filter(entry => entry.category === row.category && entry.purpose === row.purpose &&
+      entry.linked === row.linked && entry.recipient === row.recipient && entry.retentionDays >= row.retentionDays);
+    if (!matches.length) return deny('undeclared_observation');
+    seen.add(module);
+    for (const match of matches) covered.add(match);
+  }
+  const unobservedModules = registry.size - seen.size;
+  const complete = unobservedModules === 0 && [...registry.values()].every(entries=>entries.every(entry=>covered.has(entry)));
+  return {status:complete?'matched_metadata':'incomplete_metadata',modules:registry.size,
+    observations:input.observations.length,matched:input.observations.length,unobservedModules,
+    verified:false,authorization:'not_evaluated'};
+}
