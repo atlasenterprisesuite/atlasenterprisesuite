@@ -269,13 +269,17 @@ export async function sendAssistantWorkspaceMessage(input: {
   profile: AssistantProfile;
   executionMode?: AssistantExecutionMode;
   responsePreferences?: AssistantResponsePreferences;
+  signal?: AbortSignal;
 }): Promise<AssistantChatResponse> {
   const message = input.message.trim();
   if (!message) throw new Error('assistant_message_required');
 
+  input.signal?.throwIfAborted();
   const { organization, headers } = await assistantHeaders();
+  input.signal?.throwIfAborted();
   const response = await authorizedAtlasFetch('/functions/v1/atlas-copilot?api=chat', {
     method: 'POST',
+    signal: input.signal,
     headers,
     body: JSON.stringify({
       organization_id: organization.id,
