@@ -7,6 +7,7 @@ import {
   type AssistantChatResponse,
   type AssistantStatusResponse
 } from '../../assistant/client';
+import { createRequestGate } from './requestGate';
 import './creator.css';
 
 type ProMode = 'researcher' | 'analyst' | 'writer' | 'executive';
@@ -101,6 +102,9 @@ export function ProductivityProPage() {
   const [runState, setRunState] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [result, setResult] = useState<AssistantChatResponse | null>(null);
   const [runError, setRunError] = useState('');
+  const [gate] = useState(() => createRequestGate());
+  const [resultMode, setResultMode] = useState('');
+  useEffect(() => () => gate.cancel(), [gate]);
 
   useEffect(() => {
     let active = true;
@@ -134,6 +138,11 @@ export function ProductivityProPage() {
       return;
     }
 
+    const ticket = gate.start(() => {
+      setRunState('error');
+      setRunError('Request timed out. Server processing may continue.');
+    });
+    if (!ticket) return;
     setRunState('running');
     setRunError('');
     setResult(null);
@@ -142,11 +151,15 @@ export function ProductivityProPage() {
         message: `${selectedMode.instruction}\n\nUSER WORK REQUEST:\n${trimmed}`,
         mode: 'auto',
         profile: 'deep',
-        executionMode: 'interactive'
+        executionMode: 'interactive',
+        signal: ticket.signal
       });
+      if (!ticket.finish()) return;
+      setResultMode(selectedMode.label);
       setResult(response);
       setRunState('success');
     } catch (error) {
+      if (!ticket.finish()) return;
       setRunState('error');
       setRunError(error instanceof Error ? error.message : 'productivity_pro_request_failed');
     }
@@ -205,7 +218,7 @@ export function ProductivityProPage() {
           <button className="creator-primary" type="button" onClick={() => void runProTask()} disabled={runState === 'running' || !providerReady}>
             {runState === 'running' ? 'Running deep analysis…' : `Run ${selectedMode.label}`}
           </button>
-          <button type="button" onClick={() => { setRequest(''); setResult(null); setRunState('idle'); setRunError(''); }}>Clear</button>
+          <button type="button" onClick={() => { gate.cancel(); setRequest(''); setResult(null); setRunState('idle'); setRunError(''); }}>{runState === 'running' ? 'Cancel local request' : 'Clear'}</button>
         </div>
         {statusError && <p className="creator-notice" role="status">Provider status unavailable: {statusError}</p>}
         {runError && <p className="creator-notice" role="alert">{runError}</p>}
@@ -213,7 +226,7 @@ export function ProductivityProPage() {
 
       {result && <article className="ai-universe-card" aria-live="polite">
         <div className="ai-universe-card-heading">
-          <div><small>Verified execution result</small><h3>{selectedMode.label} output</h3></div>
+          <div><small>Verified execution result</small><h3>{resultMode} output</h3></div>
           <span className="provider-state is-ready">{result.provider_state || 'completed'}</span>
         </div>
         <p style={{ whiteSpace: 'pre-wrap' }}>{result.text || result.output || 'No textual result returned.'}</p>
