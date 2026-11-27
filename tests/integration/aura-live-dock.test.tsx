@@ -2,10 +2,10 @@ import {render,screen,fireEvent,waitFor,act,cleanup} from '@testing-library/reac
 import {MemoryRouter} from 'react-router-dom';
 import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {AuraLiveDock} from '../../apps/web/src/work/AuraLiveDock';
-const mocks=vi.hoisted(()=>({token:vi.fn(),org:vi.fn(),list:vi.fn()}));
+const mocks=vi.hoisted(()=>({token:vi.fn(),org:vi.fn(),list:vi.fn(),refs:vi.fn()}));
 vi.mock('../../apps/web/src/lib/atlasSession',()=>({ATLAS_SESSION_EVENT:'atlas-session-changed',getAtlasAccessToken:mocks.token,getActiveAtlasOrganization:mocks.org}));
-vi.mock('../../apps/web/src/work/api',()=>({listWorkflows:mocks.list}));
-beforeEach(()=>{vi.resetAllMocks();mocks.token.mockReturnValue('synthetic');mocks.org.mockResolvedValue({id:'a'});mocks.list.mockResolvedValue([{organizationId:'a',status:'running'},{organizationId:'b',status:'running'}]);});
+vi.mock('../../apps/web/src/work/api',()=>({listWorkflows:mocks.list,listAuraEventReferences:mocks.refs}));
+beforeEach(()=>{vi.resetAllMocks();mocks.refs.mockResolvedValue([]);mocks.token.mockReturnValue('synthetic');mocks.org.mockResolvedValue({id:'a'});mocks.list.mockResolvedValue([{organizationId:'a',status:'running'},{organizationId:'b',status:'running'}]);});
 describe('AURA dock',()=>{
  it('does not expose controls without a session',()=>{mocks.token.mockReturnValue('');render(<MemoryRouter><AuraLiveDock/></MemoryRouter>);expect(screen.queryByRole('complementary')).toBeNull();});
  it('counts scoped workflows and clears on logout',async()=>{render(<MemoryRouter><AuraLiveDock/></MemoryRouter>);fireEvent.click(screen.getByRole('button',{name:/AURA LIVE/}));fireEvent.click(screen.getByRole('button',{name:'Synchronize workflows'}));await screen.findByText('Visible workflows: 1');mocks.token.mockReturnValue('');act(()=>window.dispatchEvent(new Event('atlas-session-changed')));expect(screen.queryByText('Visible workflows: 1')).toBeNull();});
@@ -38,3 +38,5 @@ it('does not overlap a pending poll',async()=>{
  expect(mocks.list).toHaveBeenCalledTimes(1);
  await act(async()=>resolve([]));
 });
+
+it('fails closed when event authorization is rejected',async()=>{mocks.refs.mockRejectedValue(new Error('permission_required'));render(<MemoryRouter><AuraLiveDock/></MemoryRouter>);fireEvent.click(screen.getByRole('button',{name:/AURA LIVE/}));await screen.findByText('Evidence unavailable — access or scope not verified');expect(mocks.list).not.toHaveBeenCalled();expect(screen.queryByText(/Visible workflows:/)).toBeNull();});
