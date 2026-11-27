@@ -330,3 +330,7 @@ export type {
   AtlasTransactionEvidence,
   AtlasTransactionTruth
 } from './transactionTruth';
+
+// Research-only public boundary; does not grant issuance, custody or payment capabilities.
+export { classifyInstrument, assessResearchLink } from './monetaryResearch';
+export type { InstrumentClassification, ResearchRelation, ResearchLink, ResearchAssessment } from './monetaryResearch';
