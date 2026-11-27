@@ -11,6 +11,8 @@ type PlayState = 'idle' | 'playing' | 'blocked';
 
 export class LocalCrossfadeSession {
   private active = false;
+  private generation = 0;
+  private pending: HTMLAudioElement | null = null;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
   private current: HTMLAudioElement | null = null;
   private incoming: HTMLAudioElement | null = null;
@@ -28,17 +30,18 @@ export class LocalCrossfadeSession {
     this.stop();
     if (!this.tracks.length) return;
     this.active = true;
+    const generation = this.generation;
     const initial = new Audio(this.tracks[0].url);
     initial.preload = 'auto';
     this.current = initial;
     try {
       await initial.play();
-      if (!this.active) { initial.pause(); return; }
+      if (!this.active || generation !== this.generation) { initial.pause(); return; }
       this.report(0, 'playing', 'Playing from local files. Audio stays in this browser.');
       this.tickTimer = setInterval(() => this.tick(), 100);
     } catch {
       // A user-initiated stop can reject an outstanding play() promise.
-      if (!this.active) return;
+      if (!this.active || generation !== this.generation) return;
       this.stop();
       this.report(0, 'blocked', 'Browser could not play this file. Try a supported audio format.');
     }
@@ -47,14 +50,16 @@ export class LocalCrossfadeSession {
   async next() {
     if (!this.active || this.incoming || this.starting || this.index >= this.tracks.length - 1) return;
     this.starting = true;
+    const generation = this.generation;
     const target = new Audio(this.tracks[this.index + 1].url);
+    this.pending = target;
     target.preload = 'auto';
     // Fading from silence after the previous track ended is not a valid crossfade.
     const sourceEnded = Boolean(this.current?.ended);
     target.volume = sourceEnded ? 1 : 0;
     try {
       await target.play();
-      if (!this.active) { target.pause(); return; }
+      if (!this.active || generation !== this.generation) { target.pause(); return; }
       if (sourceEnded || this.current?.ended) {
         target.volume = 1;
         this.current?.pause();
@@ -68,12 +73,16 @@ export class LocalCrossfadeSession {
       this.report(this.index, 'playing', 'Crossfading between local tracks.');
     } catch {
       target.pause();
-      if (this.active) {
+      if (this.active && generation === this.generation) {
+        const failedIndex = this.index;
         this.stop();
-        this.report(this.index, 'blocked', 'Next track could not play. Mix stopped without skipping tracks.');
+        this.report(failedIndex, 'blocked', 'Next track could not play. Mix stopped without skipping tracks.');
       }
     } finally {
-      this.starting = false;
+      if (generation === this.generation) {
+        this.pending = null;
+        this.starting = false;
+      }
     }
   }
 
@@ -95,8 +104,9 @@ export class LocalCrossfadeSession {
       return;
     }
     if (this.index === this.tracks.length - 1 && this.current.ended) {
+      const lastIndex = this.index;
       this.stop();
-      this.report(this.index, 'idle', 'Local mix finished.');
+      this.report(lastIndex, 'idle', 'Local mix finished.');
       return;
     }
     if (this.index < this.tracks.length - 1 &&
@@ -108,6 +118,9 @@ export class LocalCrossfadeSession {
 
   stop() {
     this.active = false;
+    this.generation += 1;
+    this.pending?.pause();
+    this.pending = null;
     if (this.tickTimer) clearInterval(this.tickTimer);
     this.tickTimer = null;
     this.current?.pause();
