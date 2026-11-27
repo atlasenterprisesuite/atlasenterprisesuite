@@ -1,3 +1,4 @@
+import { parseAuraExecutionEvent } from '../../../../packages/execution/src/aura-events';
 import { parseAtlasWorkContext } from '../../../../packages/execution/src/work-types';
 import { authorizedAtlasFetch, getActiveAtlasOrganization } from '../lib/atlasSession';
 import type { CreateWorkWorkflowInput, WorkWorkflow } from './types';
@@ -180,4 +181,12 @@ export async function enrollWorkRuntime(input: { kind: WorkRuntimeSummary['kind'
   const runtimeToken = String(data.runtime_token || '');
   if (!runtime || !runtimeToken) throw new Error('work_runtime_enroll_response_invalid');
   return { runtime, runtimeToken };
+}
+
+export async function listAuraEventReferences(organizationId: string) {
+  const {data, organizationId: resolved} = await scopedWorkPost({operation:'list_aura_event_references'});
+  if(resolved!==organizationId || data.ok!==true || data.mode!=='reference_snapshot' || !Array.isArray(data.events) || data.events.length>100) throw new Error('invalid_aura_snapshot');
+  const events=data.events.map((event:unknown)=>parseAuraExecutionEvent(event,{organizationId,tenantId:organizationId}));
+  if(events.some(event=>event===null))throw new Error('invalid_aura_event_scope');
+  return events;
 }

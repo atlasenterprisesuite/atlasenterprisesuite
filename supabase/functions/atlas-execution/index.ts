@@ -35,6 +35,8 @@ import {
   OpenAiDomainPilotError
 } from './openai-domain.ts';
 
+import { parseAuraExecutionEvent } from '../../../packages/execution/src/aura-events.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const PUBLISHABLE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -64,6 +66,7 @@ const SUPPORTED_OPERATIONS = new Set([
   'decide_approval',
   'create_workflow_plan',
   'list_workflows',
+  'list_aura_event_references',
   'evaluate_work_step',
   'list_work_connections',
   'register_work_connection_ref',
@@ -689,6 +692,22 @@ async function createWorkPlan(req: Request, body: JsonObject, context: RequestCo
   }
 }
 
+async function listAuraEventReferences(req: Request, context: RequestContext) {
+  requireExecutionPermission(context, 'execution.read');
+  const { data, error } = await adminClient().from('execution_workflows')
+    .select('id,org_id,tenant_id,version')
+    .eq('org_id', context.orgId).eq('tenant_id', context.tenantId)
+    .eq('workflow_type', 'work.sovereign')
+    .order('updated_at', { ascending: false }).order('id', { ascending: true }).limit(100);
+  if (error) throw new EdgeError('persistence_error', 500);
+  const events = (data || []).map(row => parseAuraExecutionEvent({
+    version: 1, type: 'execution.workflow.changed', organizationId: row.org_id,
+    tenantId: row.tenant_id, workflowId: row.id, revision: row.version
+  }, {organizationId: context.orgId, tenantId: context.tenantId}));
+  if (events.some(event => event === null)) throw new EdgeError('invalid_event_scope', 500);
+  return json(req, {ok:true, mode:'reference_snapshot', events});
+}
+
 async function listWorkflows(req: Request, context: RequestContext) {
   requireExecutionPermission(context, 'execution.read');
   const admin = adminClient();
@@ -902,6 +921,7 @@ Deno.serve(async (req: Request) => {
     if (operation === 'decide_approval') return await decideApproval(req, body, context, requestId);
     if (operation === 'create_workflow_plan') return await createWorkPlan(req, body, context, requestId);
     if (operation === 'list_workflows') return await listWorkflows(req, context);
+    if (operation === 'list_aura_event_references') return await listAuraEventReferences(req, context);
     if (operation === 'evaluate_work_step') return await evaluateWorkStep(req, body, context);
     if (['list_work_connections', 'register_work_connection_ref', 'revoke_work_connection_ref'].includes(operation)) return await connectionOperation(req, operation, body, context);
     if (['list_work_runtimes', 'enroll_work_runtime', 'enqueue_work_runtime_job'].includes(operation)) return await runtimeUserOperation(req, operation, body, context);

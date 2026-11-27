@@ -171,6 +171,7 @@ export async function listWorkWorkflows(input: ListWorkWorkflowsInput) {
     .from('execution_workflows')
     .select('id,org_id,owner_module,status,current_task_id,current_module,context,created_at,updated_at,completed_at')
     .eq('org_id', input.context.orgId)
+    .eq('tenant_id', input.context.orgId)
     .eq('workflow_type', 'work.sovereign')
     .order('created_at', { ascending: false })
     .limit(100);
