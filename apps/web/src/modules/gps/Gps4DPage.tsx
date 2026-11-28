@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { readSharedGpsPoint, readTravelDestination } from './earthEntry';
+import { terrainDemSource } from './earthSources';
 import {
   calculateGpsRoute,
   deleteGpsPlace,
@@ -40,7 +41,7 @@ const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.css'
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.mjs';
 const STREET_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const USGS_TILE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
-const TERRAIN_TILEJSON = 'https://tiles.mapterhorn.com/tilejson.json';
+
 const REROUTE_COOLDOWN_MS = 15_000;
 
 function satelliteStyle(withTerrain = false): any {
@@ -61,7 +62,8 @@ function satelliteStyle(withTerrain = false): any {
     ]
   };
   if (withTerrain) {
-    style.sources.terrain = { type: 'raster-dem', url: TERRAIN_TILEJSON };
+    // Provider contract: https://tiles.mapterhorn.com/tilejson.json (Terrarium, 512 px).
+    style.sources.terrain = terrainDemSource();
     style.terrain = { source: 'terrain', exaggeration: 1.15 };
   }
   return style;
