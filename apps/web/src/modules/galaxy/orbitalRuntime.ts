@@ -27,6 +27,6 @@ export function projectOrbitalPoint(point: OrbitalPoint, yaw: number, zoom: numb
   const z = point.x * sy + point.z * cy;
   const y = point.y * Math.cos(pitch) - z * Math.sin(pitch);
   const depth = Math.max(6, 28 - z * Math.cos(pitch) - point.y * Math.sin(pitch));
-  const scale = Math.min(width / 15, height / 9) * zoom * 28 / depth;
-  return { x: width * 0.22 + x * scale, y: height * 0.54 + y * scale, radius: point.radius * scale, depth };
+  const scale = Math.min(width / 26, height / 12) * zoom * 28 / depth;
+  return { x: width * 0.5 + x * scale, y: height * 0.5 + y * scale, radius: point.radius * scale, depth };
 }
