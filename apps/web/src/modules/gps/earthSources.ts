@@ -10,3 +10,22 @@ export function earthRasterSource(kind: EarthRasterKind,date?: string){
  if(!Number.isFinite(timestamp)||new Date(timestamp).toISOString().slice(0,10)!==date)throw new RangeError("Invalid observation date");
  return {type:"raster" as const,tiles:["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/"+date+"/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg"],tileSize:256,maxzoom:9,attribution:"NASA GIBS / NOAA-20 VIIRS — observation date "+date+"; clouds and gaps possible"};
 }
+
+/** A real raster source, with attribution and no simulated replacement tiles. */
+export function earthRasterStyle(kind: EarthRasterKind, date?: string) {
+  return {
+    version: 8 as const,
+    sources: { 'earth-observation': earthRasterSource(kind, date) },
+    layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#07101b' } },
+      { id: 'earth-observation', type: 'raster', source: 'earth-observation' }
+    ]
+  };
+}
+
+/** A tile event is evidence of loading, not an independent visual certification. */
+export function hasLoadedEarthTile(event: unknown): boolean {
+  if (!event || typeof event !== 'object') return false;
+  const value = event as { sourceId?: unknown; tile?: { state?: unknown } };
+  return value.sourceId === 'earth-observation' && value.tile?.state === 'loaded';
+}
