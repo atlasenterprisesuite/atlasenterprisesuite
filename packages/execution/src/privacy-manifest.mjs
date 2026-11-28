@@ -3,19 +3,35 @@ const categories = new Set(['contact','financial','health','location','media','c
 const purposes = new Set(['account','functionality','security','support','analytics']);
 const recipients = new Set(['local','atlas']);
 function exactKeys(value, keys) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
-    Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).length === keys.length &&
-    keys.every(key => Object.hasOwn(value,key));
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+      Object.getPrototypeOf(value) !== Object.prototype || Reflect.ownKeys(value).length !== keys.length) return false;
+  return keys.every(key => {
+    const descriptor = Object.getOwnPropertyDescriptor(value,key);
+    return descriptor && descriptor.enumerable && Object.hasOwn(descriptor,'value');
+  });
+}
+function plainCollection(value, max) {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype ||
+      value.length > max || Reflect.ownKeys(value).length !== value.length + 1) return false;
+  for (let i=0;i<value.length;i++) {
+    const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+    if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor,'value')) return false;
+  }
+  return true;
 }
 const flowKey = row => JSON.stringify([row.category,row.purpose,row.linked,row.recipient]);
 const blocked = reason => ({status:'blocked',reason,labels:[],verified:false});
 export function evaluatePrivacyManifest(value) {
+  try { return evaluateDeclaration(value); } catch { return blocked('invalid_manifest'); }
+}
+function evaluateDeclaration(value) {
   if (!exactKeys(value,['schema','module','collection']) || value.schema !== 'atlas.privacy.v1' ||
       typeof value.module !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(value.module) ||
-      !Array.isArray(value.collection) || value.collection.length > 256) return blocked('invalid_manifest');
+      !plainCollection(value.collection,256)) return blocked('invalid_manifest');
   const labels = new Set();
   const declaredFlows = new Set();
-  for (const row of value.collection) {
+  for (let i=0;i<value.collection.length;i++) {
+    const row=value.collection[i];
     if (!exactKeys(row,['category','purpose','linked','recipient','retentionDays']) ||
         !categories.has(row.category) || !purposes.has(row.purpose) || !recipients.has(row.recipient) ||
         typeof row.linked !== 'boolean' || !Number.isSafeInteger(row.retentionDays) || row.retentionDays < 1 ||
