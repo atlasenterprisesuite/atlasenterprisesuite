@@ -122,6 +122,21 @@ export type AtlasPrivacyPreflightResult = {
   verified:false;
   authorization:'not_granted';
 };
+function validPrivacyAction(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
+  const keys = ['autonomyLevel','sensitivity','reversible','mutation','paidCost','budgetLimit','envelopeAllowed','regulated'];
+  if (Reflect.ownKeys(value).length !== keys.length || !keys.every(key => {
+    const d = Object.getOwnPropertyDescriptor(value,key);
+    return d && d.enumerable && Object.hasOwn(d,'value');
+  })) return false;
+  const a = value as Record<string, unknown>;
+  return ['manual','guided','autonomous'].includes(a.autonomyLevel as string) &&
+    ['low','medium','high','critical'].includes(a.sensitivity as string) &&
+    ['reversible','mutation','envelopeAllowed','regulated'].every(key => typeof a[key] === 'boolean') &&
+    typeof a.paidCost === 'number' && Number.isFinite(a.paidCost) && a.paidCost >= 0 &&
+    (a.budgetLimit === null || (typeof a.budgetLimit === 'number' && Number.isFinite(a.budgetLimit) && a.budgetLimit >= 0));
+}
+
 export async function evaluateAtlasPrivacyPreflight(input: AtlasPrivacyPreflightInput): Promise<AtlasPrivacyPreflightResult> {
   const deny=(reason:string):AtlasPrivacyPreflightResult=>({status:'blocked',reason,verified:false,authorization:'not_granted'});
   try {
@@ -129,7 +144,7 @@ export async function evaluateAtlasPrivacyPreflight(input: AtlasPrivacyPreflight
     const policy=input.policy;
     const consent=input.consent;
     const now=input.nowMs;
-    if (!Number.isSafeInteger(now) || now<=0 ||
+    if (!validPrivacyAction(policy.action) || !Number.isSafeInteger(now) || now<=0 ||
         !Number.isSafeInteger(policy.payloadVersion) || Number(policy.payloadVersion)<=0 ||
         typeof policy.payloadDigest!=='string' || !/^[a-f0-9]{64}$/.test(policy.payloadDigest) ||
         !Array.isArray(policy.requiredPermissions) || !policy.requiredPermissions.length ||
