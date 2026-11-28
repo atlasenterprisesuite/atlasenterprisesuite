@@ -48,11 +48,20 @@ try {
     await page.getByText('Tesela cargada y ciclo de render terminado; cobertura no certificada.',{exact:true}).waitFor({timeout:30000});
     const canvas = page.locator('.gps4d-map canvas.maplibregl-canvas').first();
     await canvas.waitFor({state:'visible'});
-    const evidence = {name,url:response.url(),status:response.status(),bytes:data.length,tileSha256:sha256(data),decoded,screens:[]};
+    const tileFile = host+'-sample.'+(/png/i.test(response.headers()['content-type'])?'png':'jpg');
+    await writeFile(resolve(output,tileFile),data);
+    const evidence = {name,url:response.url(),status:response.status(),bytes:data.length,tileFile,tileSha256:sha256(data),decoded,screens:[]};
     report.layers.push(evidence);
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
       await page.getByText('Tesela cargada y ciclo de render terminado; cobertura no certificada.',{exact:true}).waitFor();
+      const attribution = page.locator('.gps4d-map .maplibregl-ctrl-attrib').first();
+      const status = page.locator('.gps4d-layer-status').first();
+      await attribution.waitFor({state:'visible'});
+      const a = await attribution.boundingBox(), b = await status.boundingBox();
+      assert.ok(a && b, 'Attribution and status must be visible');
+      const overlap = Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y));
+      assert.equal(overlap,0,'Status must not obscure attribution at '+width+'px');
       const filename = host+'-'+width+'.png';
       await canvas.screenshot({path:resolve(output,filename)});
       evidence.screens.push({width,height,file:filename,sha256:sha256(await readFile(resolve(output,filename)))});
