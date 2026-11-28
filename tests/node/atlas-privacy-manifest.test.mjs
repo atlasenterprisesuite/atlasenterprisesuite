@@ -25,3 +25,16 @@ test('duplicate module declarations are blocked',()=>assert.equal(reconcile([man
 test('malformed observations and raw data fields are rejected',()=>{for(const e of [null,{...observation,retentionDays:0},{...observation,payload:'synthetic'}])assert.equal(reconcile([manifest],[e]).reason,'invalid_observation');});
 test('invalid serialized envelope is blocked',()=>{for(const input of [null,'{','{}',' '.repeat(1000001)])assert.equal(reconcilePrivacyInventory(input).status,'blocked');});
 test('empty registry and missing module coverage cannot imply success',()=>{assert.equal(reconcile([],[]).status,'blocked');assert.equal(reconcile([manifest,{...manifest,module:'voice'}],[observation]).status,'incomplete_metadata');});
+
+test('duplicate declarations cannot inflate metadata coverage',()=>{
+ const duplicate={...manifest,collection:[entry,{...entry}]};
+ assert.equal(evaluatePrivacyManifest(duplicate).status,'blocked');
+ assert.equal(reconcile([duplicate],[observation]).reason,'invalid_manifest');
+});
+test('ambiguous retention declarations for the same data flow fail closed',()=>{
+ const ambiguous={...manifest,collection:[entry,{...entry,retentionDays:60}]};
+ assert.equal(evaluatePrivacyManifest(ambiguous).status,'blocked');
+});
+test('repeated observations cannot inflate the reconciliation count',()=>{
+ assert.equal(reconcile([manifest],[observation,{...observation}]).reason,'duplicate_observation');
+});
