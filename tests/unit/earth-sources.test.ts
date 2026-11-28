@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { earthRasterSource, terrainDemSource, decodeTerrarium } from '../../apps/web/src/modules/gps/earthSources';
+import { earthRasterSource, terrainDemSource, decodeTerrarium, earthRasterStyle, hasLoadedEarthTile } from '../../apps/web/src/modules/gps/earthSources';
 
 describe('Earth source contracts', () => {
   it('uses an explicit valid date for NASA imagery and bounded zoom', () => {
@@ -21,5 +21,19 @@ describe('Earth source contracts', () => {
     expect(decodeTerrarium(127,255,128)).toBe(-0.5);
     expect(decodeTerrarium(128,10,128)).toBe(10.5);
     expect(() => decodeTerrarium(256,0,0)).toThrow();
+  });
+  it('builds a real provider style with attribution and no synthetic fallback', () => {
+    const style = earthRasterStyle('satellite', '2025-06-01');
+    expect(style.version).toBe(8);
+    expect(style.sources['earth-observation']).toEqual(earthRasterSource('satellite', '2025-06-01'));
+    expect(style.layers).toContainEqual({id:'earth-observation',type:'raster',source:'earth-observation'});
+    expect(earthRasterStyle('bathymetry').sources['earth-observation']).toEqual(earthRasterSource('bathymetry'));
+  });
+  it('requires a loaded tile, not just a style or metadata event', () => {
+    expect(hasLoadedEarthTile({sourceId:'earth-observation',sourceDataType:'metadata'})).toBe(false);
+    expect(hasLoadedEarthTile({sourceId:'earth-observation',tile:{state:'errored'}})).toBe(false);
+    expect(hasLoadedEarthTile({sourceId:'other',tile:{state:'loaded'}})).toBe(false);
+    expect(hasLoadedEarthTile({sourceId:'earth-observation',tile:{state:'loaded'}})).toBe(true);
+    expect(hasLoadedEarthTile(null)).toBe(false);
   });
 });
