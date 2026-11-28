@@ -43,17 +43,29 @@ export type ResearchAssessment = {
   blockers: string[];
 };
 
-// These checks establish metadata completeness, not document authenticity or causality.
-// Evidence must originate from a trusted adapter in a later integration; no external input
-// may be promoted to a confirmed claim by this function.
-export function assessResearchLink(input: ResearchLink): ResearchAssessment {
+export type ResearchDocument = {
+  reference: string;
+  from: string;
+  to: string;
+  relation: ResearchRelation;
+  text: string;
+  expectedSha256: string;
+};
+
+// Hash consistency and caller metadata do not prove origin or truth.
+// Only manual research review is possible; trusted acquisition remains a separate gate.
+function evaluateResearchLink(input: ResearchLink, documentIntegrity: boolean): ResearchAssessment {
   if (!Number.isFinite(input.now)) throw new Error('invalid_research_time');
   const timestamp = new Date(input.now).toISOString();
   const endpointsKnown = input.from !== input.to &&
     classifyInstrument(input.from).kind !== 'unknown' &&
     classifyInstrument(input.to).kind !== 'unknown';
   const noncausal = input.relation === 'dependency' || input.relation === 'association';
-  const metadataEligible = hasAuthenticatedEvidence(input.evidence, {
+  const evidence = input.evidence;
+  const metadataEligible = typeof evidence?.source === 'string' &&
+    typeof evidence.reference === 'string' &&
+    typeof evidence.observedAt === 'string' &&
+    hasAuthenticatedEvidence(evidence, {
     nowMs: input.now,
     maxAgeMs: 30 * 24 * 60 * 60 * 1000,
     futureToleranceMs: 0
@@ -67,7 +79,8 @@ export function assessResearchLink(input: ResearchLink): ResearchAssessment {
     checks: [
       { id: 'known-endpoints', priority: 'P0', status: endpointsKnown ? 'pass' : 'unverified', observedAt: timestamp },
       { id: 'noncausal-claim', priority: 'P0', status: noncausal ? 'pass' : 'unverified', observedAt: timestamp },
-      { id: 'source-metadata', priority: 'P0', status: metadataEligible ? 'pass' : 'unverified', observedAt: timestamp }
+      { id: 'source-metadata', priority: 'P0', status: metadataEligible ? 'pass' : 'unverified', observedAt: timestamp },
+      { id: 'document-integrity', priority: 'P0', status: documentIntegrity ? 'pass' : 'unverified', observedAt: timestamp }
     ]
   });
   const candidate = assessment.outcome === 'pass';
@@ -77,4 +90,37 @@ export function assessResearchLink(input: ResearchLink): ResearchAssessment {
     productionReady: false,
     blockers: [...assessment.blockers, ...assessment.failures]
   };
+}
+
+export function assessResearchLink(input: ResearchLink): ResearchAssessment {
+  return evaluateResearchLink(input, false);
+}
+
+/** Validates exact UTF-8 document bytes against a supplied digest, not a trusted signature. */
+export async function assessDocumentedResearchLink(
+  input: ResearchLink, document: ResearchDocument
+): Promise<ResearchAssessment> {
+  const snapshot = { ...input, evidence: input.evidence ? { ...input.evidence } : undefined };
+  const item = { ...document };
+  const limit = 1_048_576;
+  let integrity = false;
+  if (typeof item.reference === 'string' && item.reference.trim() !== '' &&
+      item.reference === snapshot.evidence?.reference &&
+      item.from === snapshot.from && item.to === snapshot.to && item.relation === snapshot.relation &&
+      typeof item.text === 'string' && item.text.length > 0 && item.text.length <= limit &&
+      item.text.trim().length > 0 && typeof item.expectedSha256 === 'string' &&
+      /^[a-f0-9]{64}$/.test(item.expectedSha256)) {
+    try {
+      const bytes = new TextEncoder().encode(item.text);
+      if (bytes.byteLength <= limit) {
+        const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+        const actual = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+        integrity = actual === item.expectedSha256;
+      }
+    } catch {
+      // Missing crypto support or failed digest computation must never grant review eligibility.
+      integrity = false;
+    }
+  }
+  return evaluateResearchLink(snapshot, integrity);
 }
