@@ -927,7 +927,7 @@ export function Gps4DPage() {
             </div>
           )}
           {engineState === 'ready' && (
-            <div className={`gps4d-layer-status ${earthRasterActive ? earthEvidence === 'tile-loaded' ? 'ready' : earthEvidence : layerState}`} role="status">
+            <div className={`gps4d-layer-status ${earthRasterActive ? 'earth-raster-status' : ''} ${earthRasterActive ? earthEvidence === 'tile-loaded' ? 'ready' : earthEvidence : layerState}`} role="status">
               <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'}</strong>
               <span>{earthRasterActive ? earthEvidence === 'tile-loaded' ? 'Tesela cargada y ciclo de render terminado; cobertura no certificada.' : earthEvidence === 'error' ? 'Capa externa no verificada: error o tiempo de espera agotado.' : 'Esperando evidencia de teselas…' : layerMessage}</span>
               {(earthRasterActive ? earthEvidence === 'error' : layerState === 'error') && <button type="button" onClick={() => {
