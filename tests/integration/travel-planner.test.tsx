@@ -2,7 +2,7 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import { ATLAS_MODULES } from '../../apps/web/src/modules/registry';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TravelPlannerPage } from '../../apps/web/src/modules/travel/TravelPlannerPage';
 
@@ -64,5 +64,23 @@ describe('ATLAS Travel & Stay web planner', () => {
       expect(screen.getByRole('link',{name:new RegExp(name)})).toHaveAttribute('href',route);
       expect(ATLAS_MODULES.some(module=>module.route===route)).toBe(true);
     }
+  });
+  it('hands off only the explicit destination to Earth without URL parameters or provider calls', () => {
+    function DestinationProbe() {
+      const location = useLocation();
+      return <div>{location.pathname + location.search} · {location.state?.travelDestination}</div>;
+    }
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<MemoryRouter initialEntries={['/travel']}><Routes>
+      <Route path="/travel" element={<TravelPlannerPage />} />
+      <Route path="/gps" element={<DestinationProbe />} />
+    </Routes></MemoryRouter>);
+    expect(screen.queryByRole('link', {name:'Explorar destino en Earth'})).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Destino'), {target:{value:'Tokyo, Japón'}});
+    const link = screen.getByRole('link', {name:'Explorar destino en Earth'});
+    expect(link).toHaveAttribute('href','/gps');
+    fireEvent.click(link);
+    expect(screen.getByText('/gps · Tokyo, Japón')).toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
   });
 });
