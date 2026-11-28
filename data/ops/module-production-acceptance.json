@@ -27,6 +27,12 @@
       "path": "/security/certificates",
       "verdict": "VERIFICATION_HOLD",
       "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
+    },
+    {
+      "module_id": "automotive-intelligence",
+      "path": "/mobility/automotive",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "Automotive Intelligence is an authenticated, local-only photo inspection and manufacturer research candidate in PR #1143; automatic vision, VIN attribution, authoritative pricing, tenant-scoped storage, complete source verification, merge/deploy checks and public E2E exact-SHA verification have not been approved. Do not promote this route to production-ready."
     }
   ],
   "shared_ux_evidence": {

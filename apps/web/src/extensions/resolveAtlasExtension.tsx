@@ -3,6 +3,7 @@ import { FuturisticEnterpriseHome } from '../components/FuturisticEnterpriseHome
 import { RequireAtlasIdentity } from '../identity/RequireAtlasIdentity';
 import { AdvisoryRoutes } from '../modules/advisory/AdvisoryRoutes';
 import { AviationRoutes } from '../modules/aviation/AviationRoutes';
+import { AutomotiveRoutes } from '../modules/automotive/AutomotiveRoutes';
 import { BusinessEcosystemPage } from '../modules/business/BusinessEcosystemPage';
 import { CrmRoutes } from '../modules/business/crm/CrmRoutes';
 import { CommerceRoutes } from '../modules/commerce/CommerceRoutes';
@@ -138,6 +139,10 @@ export function resolveAtlasExtension(pathname: string) {
 
   if (pathname === '/frontier' || pathname.startsWith('/frontier/')) {
     return <RequireAtlasIdentity><FrontierRoutes /></RequireAtlasIdentity>;
+  }
+
+  if (pathname === '/mobility/automotive' || pathname.startsWith('/mobility/automotive/')) {
+    return <RequireAtlasIdentity><AutomotiveRoutes /></RequireAtlasIdentity>;
   }
 
   if (pathname === '/mobility/aviation' || pathname.startsWith('/mobility/aviation/')) {

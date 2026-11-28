@@ -370,6 +370,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'automotive-intelligence',
+    title: 'ATLAS Automotive Intelligence',
+    navLabel: 'Automotive Intelligence',
+    area: 'Mobility',
+    route: '/mobility/automotive',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Local-only automotive photo intake and manufacturer source-backed model research; automatic recognition, VIN, live pricing, storage and provider feeds remain unavailable.',
+    showInNavigation: true
+  },
+  {
     id: 'ride',
     title: 'ATLAS Ride',
     navLabel: 'Ride',
