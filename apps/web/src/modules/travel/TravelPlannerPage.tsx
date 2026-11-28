@@ -12,6 +12,7 @@ import {
   type TravelCategory,
   type TripPlan
 } from './travelPlanning';
+import { readTravelDestination } from '../gps/earthEntry';
 import './travel.css';
 
 function downloadFile(content: string, filename: string, mediaType: string) {
@@ -48,6 +49,7 @@ export function TravelPlannerPage() {
     services
   };
   const planError = validateTripPlan(plan);
+  const earthDestination = readTravelDestination({ travelDestination: destination });
   const nights = tripNights(plan);
   const total = services.reduce((sum, service) => sum + (service.estimatedCost || 0), 0);
   const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -175,6 +177,12 @@ export function TravelPlannerPage() {
         <p className="travel-helper">
           {nights !== null && nights > 0 ? nights + (nights === 1 ? ' noche' : ' noches') : 'Selecciona las fechas del viaje'} · Los precios dependen del proveedor y deben verificarse antes de pagar.
         </p>
+        {earthDestination && (
+          <div className="travel-actions">
+            <Link className="travel-secondary" to="/gps" state={{ travelDestination: earthDestination }}>Explorar destino en Earth</Link>
+            <span>Abre GPS 4D con el destino escrito, sin buscar automáticamente ni compartir tu ubicación. Guarda tu plan antes de salir de Travel.</span>
+          </div>
+        )}
         {planError ? <p className="travel-validation" role="alert">{planError}</p> : null}
         <div className="travel-actions">
           <button type="button" className="travel-primary" disabled={Boolean(planError)} onClick={openSearch}>Buscar en la web <span aria-hidden="true">↗</span></button>
