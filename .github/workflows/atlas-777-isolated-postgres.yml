@@ -43,6 +43,8 @@ jobs:
       PGDATABASE: atlas_777_test
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 node24
+      - name: Verify recovered Foundation source integrity (not runtime certification)
+        run: sha256sum --check --strict tests/security/recovered/foundation-recovery-20261128.sha256
       - name: Verify isolated PostgreSQL 17 and tenant fixtures
         run: |
           set -euo pipefail
