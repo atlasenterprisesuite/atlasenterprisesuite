@@ -137,19 +137,33 @@ function validPrivacyAction(value: unknown): boolean {
     (a.budgetLimit === null || (typeof a.budgetLimit === 'number' && Number.isFinite(a.budgetLimit) && a.budgetLimit >= 0));
 }
 
+function validPrivacyPermissions(value: unknown): value is string[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value)!==Array.prototype ||
+      Reflect.ownKeys(value).length!==value.length+1) return false;
+  for (let i=0;i<value.length;i++) {
+    const d=Object.getOwnPropertyDescriptor(value,String(i));
+    if (!d || !d.enumerable || !Object.hasOwn(d,'value') ||
+        typeof d.value!=='string' || !d.value.trim()) return false;
+  }
+  return true;
+}
 export async function evaluateAtlasPrivacyPreflight(input: AtlasPrivacyPreflightInput): Promise<AtlasPrivacyPreflightResult> {
   const deny=(reason:string):AtlasPrivacyPreflightResult=>({status:'blocked',reason,verified:false,authorization:'not_granted'});
   try {
-    const context=resolveAtlasContext(input.context);
+    const rawContext=input.context;
+    if (rawContext.source!=='server' ||
+        ![rawContext.requestId,rawContext.sessionId,rawContext.userId,rawContext.tenantId,rawContext.organizationId].every(v=>typeof v==='string'&&v.trim()===v&&v.length>0) ||
+        !validPrivacyPermissions(rawContext.permissions)) return deny('invalid_privacy_context');
+    const context=resolveAtlasContext(rawContext);
     const policy=input.policy;
+    const inventory=input.inventory;
     const consent=input.consent;
     const now=input.nowMs;
     if (!validPrivacyAction(policy.action) || !Number.isSafeInteger(now) || now<=0 ||
         !Number.isSafeInteger(policy.payloadVersion) || Number(policy.payloadVersion)<=0 ||
         typeof policy.payloadDigest!=='string' || !/^[a-f0-9]{64}$/.test(policy.payloadDigest) ||
-        !Array.isArray(policy.requiredPermissions) || !policy.requiredPermissions.length ||
-        policy.requiredPermissions.some(p=>typeof p!=='string'||!p.trim())) return deny('invalid_privacy_policy_input');
-    if (reconcilePrivacyInventory(input.inventory).status!=='matched_metadata') return deny('privacy_inventory_incomplete');
+        !validPrivacyPermissions(policy.requiredPermissions) || !policy.requiredPermissions.length) return deny('invalid_privacy_policy_input');
+    if (reconcilePrivacyInventory(inventory).status!=='matched_metadata') return deny('privacy_inventory_incomplete');
     if (!consent || typeof consent.id!=='string' || !consent.id.trim() ||
         consent.status!=='granted' || consent.revokedAtMs!==null ||
         !Number.isSafeInteger(consent.grantedAtMs) || !Number.isSafeInteger(consent.expiresAtMs) ||
@@ -159,10 +173,14 @@ export async function evaluateAtlasPrivacyPreflight(input: AtlasPrivacyPreflight
     if (consent.userId!==actor.userId || consent.tenantId!==actor.scope.tenantId ||
         consent.organizationId!==actor.scope.organizationId || consent.sessionId!==context.sessionId ||
         consent.requestId!==context.requestId || consent.payloadVersion!==policy.payloadVersion ||
-        consent.payloadDigest!==policy.payloadDigest ||
-        consent.inventoryDigest!==await digestApprovalPayload(input.inventory)) return deny('privacy_consent_scope_mismatch');
+        consent.payloadDigest!==policy.payloadDigest) return deny('privacy_consent_scope_mismatch');
+    const inventoryDigest=consent.inventoryDigest;
+    if (typeof inventoryDigest!=='string'||!/^[a-f0-9]{64}$/.test(inventoryDigest)) return deny('privacy_consent_scope_mismatch');
+    // Finish reading mutable policy/context/receipt fields before the asynchronous digest.
+    // This is a candidate snapshot only; execution still requires fresh transactional checks.
     const decision=evaluateAtlasPolicy({...policy,requestId:context.requestId,permissions:actor.permissions});
     if (decision.outcome!=='allow') return deny('privacy_policy_not_allowed');
+    if (inventoryDigest!==await digestApprovalPayload(inventory)) return deny('privacy_consent_scope_mismatch');
     return {status:'eligible_for_transaction',reason:'metadata_preflight_only',verified:false,authorization:'not_granted'};
   } catch { return deny('privacy_preflight_failed'); }
 }
