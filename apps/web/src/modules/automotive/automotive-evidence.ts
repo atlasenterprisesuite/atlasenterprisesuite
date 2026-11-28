@@ -116,3 +116,22 @@ export function resolveAutomotiveClaim(
     sources
   };
 }
+
+/** Local model-level dossier. Never includes a photo, filename or individual vehicle identity. */
+export function buildAutomotiveDossier(modelId: string, now: Date = new Date()) {
+  const model = AUTOMOTIVE_MODELS.find(item => item.id === modelId);
+  if (!model || !Number.isFinite(now.getTime())) return null;
+  const claims = (Object.keys(UNITS) as AutomotiveClaimKey[]).map(key => {
+    const result = resolveAutomotiveClaim(AUTOMOTIVE_CLAIMS, modelId, key, now);
+    return { key, unit: UNITS[key], ...result, sources: result.sources.map(source => ({ ...source })) };
+  });
+  if (claims.some(item => item.status === 'unverified')) return null;
+  return {
+    schema: 'atlas.automotive.dossier.v1' as const,
+    model: { ...model },
+    identification: { method: 'human-selected-candidate' as const, visualRecognitionPerformed: false as const, vinVerified: false as const, confidencePercent: null },
+    photoIncluded: false as const,
+    marketPriceUsd: null,
+    claims
+  };
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AUTOMOTIVE_CLAIMS, AUTOMOTIVE_MODELS, resolveAutomotiveClaim,
+  AUTOMOTIVE_CLAIMS, AUTOMOTIVE_MODELS, resolveAutomotiveClaim, buildAutomotiveDossier,
   type AutomotiveClaimKey
 } from './automotive-evidence';
 import { validateAutomotiveImageSignature } from './automotive-image';
@@ -21,6 +21,7 @@ export function AutomotiveIntelligencePage() {
   const [error, setError] = useState('');
   const readGeneration = useRef(0);
   const model = AUTOMOTIVE_MODELS.find((item) => item.id === selectedId);
+  const dossier = buildAutomotiveDossier(selectedId);
 
   // Object URL is the only location of the selected image. Never upload or persist it.
   useEffect(() => () => {
@@ -150,12 +151,14 @@ export function AutomotiveIntelligencePage() {
               </table>
             </div>
             <p role="note">A conflict is displayed rather than automatically selecting a marketing or technical specification.</p>
+            {dossier && <a href={'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dossier, null, 2))} download="atlas-automotive-dossier.json">Download model dossier (JSON, no photograph)</a>}
           </>
         )}
       </section>
 
       <section className="workspace-card">
         <h2>4 · Connected ATLAS capabilities</h2>
+        <p><Link to="/gps">Open ATLAS GPS 4D</Link> · Existing navigation workspace; no vehicle telemetry or native CarPlay session is established here.</p>
         <p><strong>Market pricing:</strong> Not verified for a specific model year, condition or date. No dealership inventory or price feed is connected.</p>
         <p><strong>VIN and ownership:</strong> Not collected. Vehicle identification requires separate authoritative evidence.</p>
         <p><strong>Financial reporting:</strong> The existing <Link to="/finance/accounting/reports/automotive-sales">Automotive Sales Financial Reporting</Link> remains a separate, demo-data-only accounting capability.</p>

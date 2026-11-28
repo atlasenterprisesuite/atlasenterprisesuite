@@ -36,3 +36,17 @@ describe('ATLAS Automotive Intelligence — canonical protected route', () => {
     expect(screen.getByText(/No automated confidence score exists/)).toBeTruthy();
   });
 });
+
+describe('Automotive dossier and existing navigation handoff', () => {
+  it('exports only model evidence, keeps conflicts and links to the existing GPS module', () => {
+    render(<MemoryRouter initialEntries={['/mobility/automotive']}><AutomotiveRoutes /></MemoryRouter>);
+    expect(screen.queryByRole('link', {name:/Download model dossier/})).toBeNull();
+    expect(screen.getByRole('link', {name:'Open ATLAS GPS 4D'}).getAttribute('href')).toBe('/gps');
+    fireEvent.change(screen.getByLabelText('Reference model'), { target: { value: 'mclaren-720s-spider' } });
+    const link = screen.getByRole('link', {name:/Download model dossier/});
+    const href = link.getAttribute('href')!;
+    const d = JSON.parse(decodeURIComponent(href.slice(href.indexOf(',') + 1)));
+    expect(d.photoIncluded).toBe(false);
+    expect(d.claims.find((x: {key: string}) => x.key === 'zero_to_100_seconds').values).toEqual([2.8, 2.9]);
+  });
+});
