@@ -38,3 +38,25 @@ test('ambiguous retention declarations for the same data flow fail closed',()=>{
 test('repeated observations cannot inflate the reconciliation count',()=>{
  assert.equal(reconcile([manifest],[observation,{...observation}]).reason,'duplicate_observation');
 });
+
+test('hidden and symbol metadata fields cannot bypass the exact declaration schema',()=>{
+ const hidden=Object.defineProperty({...entry},'payload',{value:'synthetic',enumerable:false});
+ const symbol={...entry,[Symbol('payload')]:'synthetic'};
+ for(const row of [hidden,symbol]) assert.equal(evaluatePrivacyManifest({...manifest,collection:[row]}).status,'blocked');
+});
+test('accessor properties are rejected without executing their getters',()=>{
+ let invoked=0;
+ const row={...entry};
+ Object.defineProperty(row,'category',{enumerable:true,get(){invoked++;return 'contact';}});
+ assert.equal(evaluatePrivacyManifest({...manifest,collection:[row]}).status,'blocked');
+ assert.equal(invoked,0);
+});
+test('custom iteration cannot conceal invalid data flows',()=>{
+ const collection=[{...entry,recipient:'external'}];
+ Object.defineProperty(collection,Symbol.iterator,{value:function*(){}});
+ assert.equal(evaluatePrivacyManifest({...manifest,collection}).status,'blocked');
+});
+test('sparse and extra-property arrays fail closed',()=>{
+ for(const collection of [Array(1),Object.assign([entry],{payload:'synthetic'})])
+   assert.equal(evaluatePrivacyManifest({...manifest,collection}).status,'blocked');
+});
