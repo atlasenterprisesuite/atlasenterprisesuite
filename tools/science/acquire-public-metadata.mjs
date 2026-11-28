@@ -19,7 +19,7 @@ export function parseCmr(text){
 export function parseGibs(text){
  if(/<!\s*(DOCTYPE|ENTITY)\b/i.test(text))throw Error('P0_XML_ACTIVE_DECLARATION');
  // Use Python's standard XML parser, not regex for structural validation.
- const script="import sys,json,xml.etree.ElementTree as E\nr=E.fromstring(sys.stdin.buffer.read())\nn={'w':'http://www.opengis.net/wmts/1.0'}\nassert r.tag=='{http://www.opengis.net/wmts/1.0}Capabilities'\nl=r.findall('./w:Contents/w:Layer',n)\nassert len(l)>0\nprint(json.dumps({'kind':'wmts-capabilities','layerCount':len(l)}))";
+ const script="import sys,json,xml.etree.ElementTree as E\nr=E.fromstring(sys.stdin.buffer.read())\nn={'w':'http://www.opengis.net/wmts/1.0'}\nif r.tag!='{http://www.opengis.net/wmts/1.0}Capabilities': raise ValueError('invalid root')\nl=r.findall('./w:Contents/w:Layer',n)\nif not l: raise ValueError('empty layers')\nprint(json.dumps({'kind':'wmts-capabilities','layerCount':len(l)}))";
  for(const cmd of process.platform==='win32'?['python','py']:['python3','python']){
   const p=spawnSync(cmd,cmd==='py'?['-3','-c',script]:['-c',script],{input:text,encoding:'utf8',timeout:15000,maxBuffer:1024*1024});
   if(p.error?.code==='ENOENT')continue;
@@ -55,7 +55,7 @@ async function atomicCreate(path,bytes){
 }
 export async function persist(result,out){
  const {raw,...receipt}=result;
- if(digest(raw)!==receipt.sha256||raw.length!==receipt.bytes)throw Error('P0_RECEIPT_MISMATCH');
+ if(!Object.hasOwn(SOURCES,receipt.sourceId)||receipt.url!==SOURCES[receipt.sourceId]||!Buffer.isBuffer(raw)||digest(raw)!==receipt.sha256||raw.length!==receipt.bytes)throw Error('P0_RECEIPT_MISMATCH');
  await mkdir(out,{recursive:true,mode:0o700});
  const base=receipt.sourceId+'-'+receipt.sha256;
  const filename=base+(receipt.sourceId==='gibs'?'.xml':'.json');
