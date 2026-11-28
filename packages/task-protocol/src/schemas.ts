@@ -22,6 +22,32 @@ function isIsoDate(value: unknown): value is string {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
 }
 
+function nullableString(value: unknown): boolean {
+  return value === null || typeof value === 'string';
+}
+
+function hasFields(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return isRecord(value) && keys.every((key) => nonEmptyString(value[key]));
+}
+
+const evidenceValidators = {
+  artifacts: (item: unknown) => hasFields(item, ['id', 'kind', 'uri']),
+  findings: (item: unknown) => hasFields(item, ['id', 'summary']) &&
+    (item.severity === 'info' || item.severity === 'warning' || item.severity === 'error'),
+  commits: (item: unknown) => hasFields(item, ['repo', 'sha']) && nullableString(item.url),
+  tests: (item: unknown) => hasFields(item, ['name']) &&
+    (item.status === 'passed' || item.status === 'failed') && nullableString(item.evidence),
+  approvals: (item: unknown) => hasFields(item, ['actorId', 'target']) &&
+    (item.result === 'approved' || item.result === 'denied') && isIsoDate(item.createdAt),
+  events: (item: unknown) => hasFields(item, ['eventId', 'type'])
+};
+
+function validDeployment(value: unknown): boolean {
+  return value === null || (hasFields(value, ['id']) &&
+    (value.status === 'requested' || value.status === 'started' ||
+      value.status === 'verified' || value.status === 'failed') && nullableString(value.url));
+}
+
 function validateTask(value: unknown): SafeParseResult<AtlasTask> {
   const issues: string[] = [];
   if (!isRecord(value)) return { success: false, error: { issues: ['task must be an object'] } };
@@ -42,11 +68,14 @@ function validateTask(value: unknown): SafeParseResult<AtlasTask> {
   if (!nonEmptyString(value.state) || !states.has(value.state as AtlasTaskState)) issues.push('state is invalid');
 
   for (const key of ['artifacts', 'findings', 'commits', 'tests', 'approvals', 'events'] as const) {
-    if (!Array.isArray(value[key])) issues.push(`${key} must be an array`);
+    const items = value[key];
+    if (!Array.isArray(items) || !Array.from(items).every(evidenceValidators[key])) {
+      issues.push(`${key} must be an array of valid evidence records`);
+    }
   }
 
   if (!(value.traceId === null || nonEmptyString(value.traceId))) issues.push('traceId must be null or a non-empty string');
-  if (!(value.deployment === null || isRecord(value.deployment))) issues.push('deployment must be null or an object');
+  if (!validDeployment(value.deployment)) issues.push('deployment must be null or a valid deployment record');
   if (!isIsoDate(value.createdAt)) issues.push('createdAt must be an ISO-compatible date');
   if (!isIsoDate(value.updatedAt)) issues.push('updatedAt must be an ISO-compatible date');
 
