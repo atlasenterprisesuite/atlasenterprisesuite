@@ -52,3 +52,27 @@ describe('privacy preflight composes canonical policy, context and consent',()=>
     }
   });
 });
+
+describe('privacy policy runtime input must fail closed (777)',()=>{
+  it.each([
+    ['mutation',undefined],['mutation','false'],['regulated',undefined],
+    ['reversible',null],['envelopeAllowed','true'],
+    ['autonomyLevel','unknown'],['sensitivity','unknown'],
+    ['paidCost',NaN],['paidCost',Infinity],['paidCost',-1],['paidCost','1'],
+    ['budgetLimit',NaN],['budgetLimit',Infinity],['budgetLimit',-1],
+    ['budgetLimit','1']
+  ])('rejects invalid action field %s',async(key,value)=>{
+    const f=await fixture();
+    const action={...f.policy.action,[String(key)]:value} as typeof f.policy.action;
+    const result=await evaluateAtlasPrivacyPreflight({...f,policy:{...f.policy,action}});
+    expect(result.status).toBe('blocked');
+    expect(result.authorization).toBe('not_granted');
+  });
+  it('rejects missing action and extra action fields',async()=>{
+    const f=await fixture();
+    for(const action of [undefined,{...f.policy.action,unexpected:true}]){
+      const result=await evaluateAtlasPrivacyPreflight({...f,policy:{...f.policy,action:action as typeof f.policy.action}});
+      expect(result.status).toBe('blocked');
+    }
+  });
+});
