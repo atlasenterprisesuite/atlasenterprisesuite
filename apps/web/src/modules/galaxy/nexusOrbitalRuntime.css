@@ -1,0 +1,29 @@
+.nexus-orbital-runtime {
+  min-width: 0;
+  padding: var(--atlas-space-4);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-xl);
+  background: var(--atlas-surface-solid);
+  color: var(--atlas-text);
+}
+.nexus-orbital-header,.nexus-orbital-selection {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--atlas-space-3);
+}
+.nexus-orbital-header h2,.nexus-orbital-selection p { margin: 0; }
+.nexus-orbital-header > p,.nexus-orbital-selection p { color: var(--atlas-text-muted); font-size: var(--atlas-font-size-sm); }
+.nexus-orbital-canvas {
+  display: block; width: 100%; height: auto; aspect-ratio: 25/14;
+  margin-block: var(--atlas-space-3); border-radius: var(--atlas-radius-md);
+  background: var(--atlas-bg); cursor: pointer;
+}
+.nexus-orbital-canvas[hidden] { display: none; }
+.nexus-orbital-controls { display:flex; flex-wrap:wrap; gap:var(--atlas-space-2); margin-block:var(--atlas-space-3); }
+.nexus-orbital-runtime button {
+  min-height:var(--atlas-touch-target); max-width:100%; overflow-wrap:anywhere;
+  padding:var(--atlas-space-2) var(--atlas-space-3); font:inherit;
+  color:var(--atlas-text); background:var(--atlas-surface-2);
+  border:1px solid var(--atlas-border); border-radius:var(--atlas-radius-sm); cursor:pointer;
+}
+.nexus-orbital-runtime button[aria-pressed="true"] { border-color:var(--atlas-focus); color:var(--atlas-cyan); }
+.nexus-orbital-runtime button:disabled { opacity:.55; cursor:not-allowed; }

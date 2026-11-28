@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AtlasVisualReference } from '../../components/AtlasVisualReference';
+import { NexusOrbitalRuntime } from './NexusOrbitalRuntime';
 import {
   ATLAS_SESSION_EVENT,
   getCachedAtlasShellOrganization,
@@ -42,8 +42,6 @@ export function AtlasGalaxyPage() {
         <p>Navigate the enterprise ecosystem through a truthful spatial view of registered modules and protected destinations.</p>
       </header>
 
-      <AtlasVisualReference reference="universe" compact />
-
       <Link className="galaxy-portal-launcher" to="/galaxy/portals">
         <span>
           <small>Spatial gateway</small>
@@ -58,7 +56,10 @@ export function AtlasGalaxyPage() {
           Resolving ATLAS module state
         </div>
       ) : (
-        <AtlasGalaxyMap nodes={nodes} onSelectNode={handleSelectNode} />
+        <>
+          <NexusOrbitalRuntime nodes={nodes} onOpen={handleSelectNode} />
+          <AtlasGalaxyMap nodes={nodes} onSelectNode={handleSelectNode} />
+        </>
       )}
     </section>
   );
