@@ -332,5 +332,5 @@ export type {
 } from './transactionTruth';
 
 // Research-only public boundary; does not grant issuance, custody or payment capabilities.
-export { classifyInstrument, assessResearchLink } from './monetaryResearch';
-export type { InstrumentClassification, ResearchRelation, ResearchLink, ResearchAssessment } from './monetaryResearch';
+export { classifyInstrument, assessResearchLink, assessDocumentedResearchLink } from './monetaryResearch';
+export type { InstrumentClassification, ResearchRelation, ResearchLink, ResearchAssessment, ResearchDocument } from './monetaryResearch';
