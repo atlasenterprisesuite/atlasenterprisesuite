@@ -46,6 +46,7 @@ import {
 } from '../modules/integration/AtlasIntegrationHubs';
 import { VoiceRoutes } from '../modules/voice/VoiceRoutes';
 import { WorkRoutes } from '../work/WorkRoutes';
+import { TravelPlannerPage } from '../modules/travel/TravelPlannerPage';
 
 const JAQUE_MATE_SENTINEL_CANONICAL = '/health/research/frontiers/disease-reconstruction/jaque-mate-sentinel';
 const JAQUE_MATE_SENTINEL_V2 = '/health/jaque-mate/sentinel/v2';
@@ -59,6 +60,8 @@ export function resolveAtlasExtension(pathname: string) {
   if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
     return <RequireAtlasIdentity><AtlasCloudRoutes /></RequireAtlasIdentity>;
   }
+
+  if (pathname === '/travel') return <RequireAtlasIdentity><TravelPlannerPage /></RequireAtlasIdentity>;
 
   if (pathname === '/suite') return <AtlasSuitePage />;
 

@@ -34,4 +34,21 @@ describe('ATLAS GPS fused mobile experience', () => {
     expect(page).toContain('navigator.share');
     expect(page).toContain('Llegaste a tu destino');
   });
+  it('exposes a dedicated globe mode independent of USGS imagery and paid 3D tiles', () => {
+    expect(page).toContain("setViewMode('globe')");
+    expect(page).toContain("viewMode === 'globe'");
+    expect(page).toContain("instance.setProjection({ type: 'globe' })");
+    expect(page).toContain("viewMode === 'street' || viewMode === 'globe'");
+    expect(page).toContain("zoom: 1.5");
+    expect(page).toContain("OpenFreeMap + OpenStreetMap · Earth globe");
+    expect(page).toContain("Proyección de globo no disponible");
+  });
+
+  it('removes stale layer callbacks and offers explicit regional zoom controls', () => {
+    expect(page).toContain("instance.off('style.load', applyProjection)");
+    expect(page).toContain("Zoom continental");
+    expect(page).toContain("Zoom urbano");
+    expect(page).toContain("zoom: 3");
+    expect(page).toContain("zoom: 12");
+  });
 });

@@ -27,6 +27,12 @@
       "path": "/security/certificates",
       "verdict": "VERIFICATION_HOLD",
       "reason": "The authenticated certificate inventory and security dashboard are implemented only in the pull-request branch. Live GitHub OIDC ingestion, end-to-end mTLS verification, release tests and exact-SHA production route evidence have not passed all acceptance gates; the route must remain explicitly on verification hold."
+    },
+    {
+      "module_id": "travel",
+      "path": "/travel",
+      "verdict": "VERIFICATION_HOLD",
+      "reason": "Planning only; no live inventory, verified bookings, payments, tenant-persistent itinerary or exact-SHA production E2E evidence."
     }
   ],
   "shared_ux_evidence": {

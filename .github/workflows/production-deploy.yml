@@ -122,3 +122,85 @@ jobs:
             echo "- Cloudflare production deployment: separate required stage; not claimed by this workflow"
             echo "- Public production verification: separate required stage; not claimed by this workflow"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Isolated public-data browser lab; never deploys, never uses production credentials.
+  verify-earth-real-data:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/travel-consolidation-777' && github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked application dependencies
+        run: npm ci
+      - name: Verify exact source and prepare isolated browser lab
+        env:
+          ATLAS_EARTH_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ATLAS_EARTH_SHA"
+          npm install --prefix "$RUNNER_TEMP/earth-browser" --no-audit --no-fund playwright@1.51.1
+          mkdir -p .tmp/earth-browser
+          cat > apps/web/earth-ci.html <<'HTML'
+          <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Earth CI laboratory</title><div id="root"></div><script type="module" src="/src/earth-ci.tsx"></script></html>
+          HTML
+          cat > apps/web/src/earth-ci.tsx <<'TSX'
+          import React from 'react';
+          import { createRoot } from 'react-dom/client';
+          import { BrowserRouter } from 'react-router-dom';
+          import { Gps4DPage } from './modules/gps/Gps4DPage';
+          import './atlas-design-tokens.css';
+          import './styles.css';
+          import './accessibility.css';
+          createRoot(document.getElementById('root')!).render(<BrowserRouter><Gps4DPage /></BrowserRouter>);
+          TSX
+          export ATLAS_PLAYWRIGHT_MODULE="$RUNNER_TEMP/earth-browser/node_modules/playwright/index.mjs"
+          npm --workspace apps/web run dev -- --host 127.0.0.1 --port 4173 --strictPort > .tmp/earth-browser/vite.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true; rm -f apps/web/earth-ci.html apps/web/src/earth-ci.tsx' EXIT
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:4173/earth-ci.html > /dev/null && break
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:4173/earth-ci.html > /dev/null
+          node scripts/verify-earth-browser.mjs
+      - name: Record isolated Earth browser evidence
+        if: always()
+        run: |
+          if [ -f .tmp/earth-browser/verification.json ]; then
+            cat .tmp/earth-browser/verification.json
+            sha256sum .tmp/earth-browser/* | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No browser evidence produced" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Preserve Earth browser evidence manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/earth-browser
+          if [ ! -f .tmp/earth-browser/verification.json ]; then
+            printf '{"ok":false,"failure":"Browser report unavailable"}\n' > .tmp/earth-browser/verification.json
+          fi
+          # Hash a stable snapshot, never a log still writable by the Vite process.
+          mkdir -p .tmp/earth-browser-snapshot
+          cp -a .tmp/earth-browser/. .tmp/earth-browser-snapshot/
+          (cd .tmp/earth-browser-snapshot && find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - name: Upload Earth browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earth-browser-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: .tmp/earth-browser-snapshot/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

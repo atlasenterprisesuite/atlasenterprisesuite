@@ -368,3 +368,21 @@
   .gps4d-coverage-heading { flex-direction:column; }
   .gps4d-coverage-actions { grid-template-columns:1fr; }
 }
+
+/* Keep source attribution at the bottom and raster evidence at the top,
+   outside the navigation controls' reserved right-hand column. */
+.gps4d-layer-status.earth-raster-status {
+  top: 14px;
+  bottom: auto;
+  left: 14px;
+  max-width: min(520px, calc(100% - 86px));
+  opacity: 1;
+}
+@media (max-width: 640px) {
+  .gps4d-layer-status.earth-raster-status {
+    top: 10px;
+    left: 10px;
+    max-width: calc(100% - 64px);
+    overflow-wrap: anywhere;
+  }
+}

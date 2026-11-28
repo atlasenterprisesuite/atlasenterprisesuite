@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { readSharedGpsPoint, readTravelDestination } from './earthEntry';
+import { terrainDemSource, earthRasterStyle, hasLoadedEarthTile } from './earthSources';
 import {
   calculateGpsRoute,
   deleteGpsPlace,
@@ -38,7 +41,7 @@ const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.css'
 const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@6.11.1/dist/maplibre-gl.mjs';
 const STREET_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 const USGS_TILE = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
-const TERRAIN_TILEJSON = 'https://tiles.mapterhorn.com/tilejson.json';
+
 const REROUTE_COOLDOWN_MS = 15_000;
 
 function satelliteStyle(withTerrain = false): any {
@@ -59,7 +62,8 @@ function satelliteStyle(withTerrain = false): any {
     ]
   };
   if (withTerrain) {
-    style.sources.terrain = { type: 'raster-dem', url: TERRAIN_TILEJSON };
+    // Provider contract: https://tiles.mapterhorn.com/tilejson.json (Terrarium, 512 px).
+    style.sources.terrain = terrainDemSource();
     style.terrain = { source: 'terrain', exaggeration: 1.15 };
   }
   return style;
@@ -113,6 +117,7 @@ function maneuverSymbol(step: GpsRouteStep | null) {
 }
 
 export function Gps4DPage() {
+  const location = useLocation();
   const mapNode = useRef<HTMLDivElement | null>(null);
   const driveMapNode = useRef<HTMLDivElement | null>(null);
   const map = useRef<any>(null);
@@ -139,10 +144,14 @@ export function Gps4DPage() {
   const [locationSourceKind, setLocationSourceKind] = useState<NavigationLocationSourceKind>('browser-geolocation');
   const [navigationFixSource, setNavigationFixSource] = useState<'gps' | 'route-snap'>('gps');
   const [navigationConfidence, setNavigationConfidence] = useState(0);
-  const [viewMode, setViewMode] = useState<GpsViewMode>('street');
+  const [viewMode, setViewMode] = useState<GpsViewMode | 'globe' | 'earth-satellite' | 'bathymetry'>('street');
+  const [observationDate, setObservationDate] = useState('2025-06-01');
+  const [draftObservationDate, setDraftObservationDate] = useState('2025-06-01');
+  const [earthRetry, setEarthRetry] = useState(0);
+  const [earthEvidence, setEarthEvidence] = useState<'loading' | 'tile-loaded' | 'error'>('loading');
   const [current, setCurrent] = useState<LivePosition | null>(null);
-  const [selected, setSelected] = useState<GpsPoint | null>(null);
-  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<GpsPoint | null>(() => readSharedGpsPoint(location.search));
+  const [query, setQuery] = useState(() => readTravelDestination(location.state));
   const [searchResults, setSearchResults] = useState<GpsPoint[]>([]);
   const [searchState, setSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [routes, setRoutes] = useState<GpsRoute[]>([]);
@@ -160,6 +169,7 @@ export function Gps4DPage() {
   const [arrivalState, setArrivalState] = useState<'idle' | 'approaching' | 'arrived'>('idle');
   const [persistenceState, setPersistenceState] = useState<'loading' | 'ready' | 'blocked'>('loading');
   const [photorealistic3D, setPhotorealistic3D] = useState(false);
+  const earthRasterActive = !photorealistic3D && (viewMode === 'earth-satellite' || viewMode === 'bathymetry');
   const googleMapTilesKey = String((import.meta as any).env?.VITE_ATLAS_GOOGLE_MAP_TILES_KEY || '');
   const photorealisticConfigured = googleMapTilesKey.trim().length > 0;
   const indoorBuilding = useMemo<IndoorBuilding | null>(() => {
@@ -193,8 +203,8 @@ export function Gps4DPage() {
       const instance = new module.Map({
         container: mapNode.current,
         style: STREET_STYLE,
-        center: ORLANDO,
-        zoom: 11.5,
+        center: selectedRef.current ? [selectedRef.current.lon, selectedRef.current.lat] : ORLANDO,
+        zoom: selectedRef.current ? 14 : 11.5,
         pitch: 0,
         bearing: 0,
         maxPitch: 85,
@@ -204,7 +214,7 @@ export function Gps4DPage() {
       setLayerState('loading');
       setLayerMessage('Cargando Street map…');
       instance.addControl(new module.NavigationControl({ visualizePitch: true }), 'top-right');
-      if (module.GlobeControl) instance.addControl(new module.GlobeControl(), 'top-right');
+      // Projection is controlled by the accessible map-layer buttons below.
       instance.on('load', () => {
         setEngineState('ready');
         setLayerState('ready');
@@ -282,13 +292,14 @@ export function Gps4DPage() {
   }, [navigationActive]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const lat = Number(params.get('lat'));
-    const lon = Number(params.get('lon'));
-    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-      setSelected({ lat, lon, label: params.get('label') || 'Destino compartido' });
+    const shared = readSharedGpsPoint(location.search);
+    const destination = readTravelDestination(location.state);
+    if (shared) {
+      setSelected(shared);
+      map.current?.easeTo({ center: [shared.lon, shared.lat], zoom: 14, duration: 0 });
     }
-  }, []);
+    if (destination) setQuery(destination);
+  }, [location.key, location.search, location.state]);
 
   useEffect(() => {
     listGpsSavedPlaces()
@@ -306,48 +317,88 @@ export function Gps4DPage() {
       .setLngLat([selected.lon, selected.lat])
       .setPopup(new maplibre.current.Popup({ offset: 22 }).setText(selected.label))
       .addTo(map.current);
-  }, [selected]);
+  }, [selected, engineState]);
 
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || photorealistic3D || engineState !== 'ready') return;
     const instance = map.current;
-    const applyMode = () => {
+    let cancelled = false;
+    const raster = viewMode === 'earth-satellite' || viewMode === 'bathymetry';
+    const rasterKind = viewMode === 'bathymetry' ? 'bathymetry' : 'satellite';
+    let loaded = false;
+    let failed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onTile = (event: unknown) => {
+      if (cancelled || !raster || failed || !hasLoadedEarthTile(event)) return;
+      loaded = true;
+    };
+    const onIdle = () => {
+      if (cancelled || !raster || failed || !loaded) return;
+      setEarthEvidence('tile-loaded');
+      if (timer !== undefined) clearTimeout(timer);
+    };
+    const onRasterError = () => {
+      if (cancelled || !raster) return;
+      failed = true;
+      setEarthEvidence('error');
+      if (timer !== undefined) clearTimeout(timer);
+    };
+    const applyProjection = () => {
+      if (cancelled) return;
       try {
-        setLayerState('loading');
-        setLayerMessage(viewMode === 'street' ? 'Cargando Street map…' : viewMode === 'satellite' ? 'Cargando satélite…' : 'Cargando 3D…');
-        if (viewMode === 'street') {
-          if (instance.setProjection) instance.setProjection({ type: 'mercator' });
-          instance.setTerrain?.(null);
-          instance.setPitch(0);
-          instance.setStyle(STREET_STYLE);
-        } else if (viewMode === 'satellite') {
-          if (instance.setProjection) instance.setProjection({ type: 'mercator' });
-          instance.setTerrain?.(null);
-          instance.setPitch(0);
-          instance.setStyle(satelliteStyle(false));
+        if (viewMode === 'globe' || viewMode === 'terrain3d' || raster) {
+          if (typeof instance.setProjection !== 'function') throw new Error('Proyección de globo no disponible');
+          instance.setProjection({ type: 'globe' });
+          if (viewMode === 'terrain3d') {
+            instance.setTerrain?.({ source: 'terrain', exaggeration: 1.15 });
+            instance.easeTo({ pitch: 62, zoom: Math.max(instance.getZoom(), 12.5), duration: 650 });
+          } else {
+            instance.setTerrain?.(null);
+            instance.jumpTo({ zoom: 1.5, pitch: 0, bearing: 0 });
+          }
         } else {
-          instance.setStyle(satelliteStyle(true));
-          instance.once('style.load', () => {
-            try {
-              if (instance.setProjection) instance.setProjection({ type: 'globe' });
-              instance.setTerrain?.({ source: 'terrain', exaggeration: 1.15 });
-              instance.easeTo({ pitch: 62, zoom: Math.max(instance.getZoom(), 12.5), duration: 650 });
-              renderRoute(activeRouteRef.current);
-            } catch {
-              setLayerState('error');
-              setLayerMessage('La capa 3D no respondió.');
-            }
-          });
-          return;
+          instance.setProjection?.({ type: 'mercator' });
+          instance.setTerrain?.(null);
+          instance.setPitch(0);
         }
-        instance.once('style.load', () => renderRoute(activeRouteRef.current));
-      } catch {
+        // A previous road route must not override the explicit world-scale camera.
+        renderRouteOn(instance, activeRouteRef.current, 'atlas-overview-route', viewMode !== 'globe' && !raster);
+      } catch (error) {
+        onRasterError();
         setLayerState('error');
-      setLayerMessage('La capa seleccionada no respondió.');
+        setLayerMessage(error instanceof Error && error.message === 'Proyección de globo no disponible'
+          ? error.message : 'La capa seleccionada no respondió.');
       }
     };
-    applyMode();
-  }, [viewMode, photorealistic3D]);
+    try {
+      setLayerState('loading');
+      setLayerMessage(viewMode === 'globe' ? 'Cargando globo Earth…' : viewMode === 'street' ? 'Cargando Street map…' : viewMode === 'satellite' ? 'Cargando satélite…' : 'Cargando 3D…');
+      if (raster) {
+        setEarthEvidence('loading');
+        instance.on('sourcedata', onTile);
+        instance.on('idle', onIdle);
+        instance.on('error', onRasterError);
+        timer = setTimeout(() => { if (!cancelled) onRasterError(); }, 20000);
+      }
+      instance.once('style.load', applyProjection);
+      instance.setStyle(raster ? earthRasterStyle(rasterKind, observationDate) : viewMode === 'street' || viewMode === 'globe' ? STREET_STYLE : satelliteStyle(viewMode === 'terrain3d'), { diff: false });
+    } catch {
+      onRasterError();
+      instance.off('style.load', applyProjection);
+      setLayerState('error');
+      setLayerMessage('La capa seleccionada no respondió.');
+    }
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) clearTimeout(timer);
+      instance.off('style.load', applyProjection);
+      if (raster) {
+        instance.off('sourcedata', onTile);
+        instance.off('idle', onIdle);
+        instance.off('error', onRasterError);
+      }
+    };
+  }, [viewMode, photorealistic3D, engineState, observationDate, earthRetry]);
 
   useEffect(() => {
     renderRoute(activeRoute);
@@ -717,10 +768,13 @@ export function Gps4DPage() {
 
   const mapModeDetail = useMemo(() => {
     if (photorealistic3D) return 'Google Photorealistic 3D Tiles · external-gated';
+    if (viewMode === 'earth-satellite') return 'NASA GIBS / NOAA-20 VIIRS · observación ' + observationDate;
+    if (viewMode === 'bathymetry') return 'GEBCO / NOAA NCEI · relieve sombreado, no profundidad medida';
+    if (viewMode === 'globe') return 'OpenFreeMap + OpenStreetMap · Earth globe';
     if (viewMode === 'street') return 'OpenFreeMap + OpenStreetMap';
     if (viewMode === 'satellite') return 'USGS The National Map imagery · U.S. coverage';
     return 'USGS imagery + Mapterhorn elevation · 3D globe';
-  }, [viewMode, photorealistic3D]);
+  }, [viewMode, photorealistic3D, observationDate]);
 
   return (
     <section className="gps4d-page">
@@ -742,6 +796,10 @@ export function Gps4DPage() {
       </div>
 
       <nav className={`gps4d-view-modes ${navigationActive ? 'gps4d-nav-hidden' : ''}`} aria-label="GPS map layers">
+        <button type="button" disabled={engineState !== 'ready'} aria-pressed={!photorealistic3D && viewMode === 'globe'} onClick={() => {
+          if (!photorealistic3D && viewMode === 'globe' && layerState === 'ready') map.current?.jumpTo({ zoom: 1.5, pitch: 0, bearing: 0 });
+          else { setPhotorealistic3D(false); setViewMode('globe'); }
+        }}>Earth</button>
         <button type="button" aria-pressed={!photorealistic3D && viewMode === 'street'} onClick={() => { setPhotorealistic3D(false); setViewMode('street'); }}>Map</button>
         <button type="button" aria-pressed={!photorealistic3D && viewMode === 'satellite'} onClick={() => { setPhotorealistic3D(false); setViewMode('satellite'); }}>Satellite</button>
         <button type="button" aria-pressed={!photorealistic3D && viewMode === 'terrain3d'} onClick={() => { setPhotorealistic3D(false); setViewMode('terrain3d'); }}>3D</button>
@@ -762,9 +820,36 @@ export function Gps4DPage() {
         >
           Photorealistic
         </button>
+        <button type="button" disabled={engineState !== 'ready'} aria-pressed={earthRasterActive && viewMode === 'earth-satellite'} onClick={() => { setEarthEvidence('loading'); setPhotorealistic3D(false); setViewMode('earth-satellite'); setEarthRetry(value => value + 1); }}>Satélite global</button>
+        <button type="button" disabled={engineState !== 'ready'} aria-pressed={earthRasterActive && viewMode === 'bathymetry'} onClick={() => { setEarthEvidence('loading'); setPhotorealistic3D(false); setViewMode('bathymetry'); setEarthRetry(value => value + 1); }}>Océanos GEBCO</button>
         <span>{mapModeDetail}</span>
+        {!photorealistic3D && viewMode === 'globe' && (
+          <>
+            <button type="button" disabled={layerState !== 'ready'} onClick={() => map.current?.jumpTo({ zoom: 3, pitch: 0 })}>Zoom continental</button>
+            <button type="button" disabled={layerState !== 'ready'} onClick={() => map.current?.jumpTo({ zoom: 12, pitch: 0 })}>Zoom urbano</button>
+          </>
+        )}
       </nav>
 
+      {earthRasterActive && !navigationActive && (
+        <div className="notice">
+          {viewMode === 'earth-satellite' && (
+            <form onSubmit={event => {
+              event.preventDefault();
+              try { earthRasterStyle('satellite', draftObservationDate); }
+              catch { return; }
+              setEarthEvidence('loading');
+              setObservationDate(draftObservationDate);
+              setEarthRetry(value => value + 1);
+            }}>
+              <label>Fecha de observación <input type="date" required value={draftObservationDate} max={new Date().toISOString().slice(0,10)} onChange={event => setDraftObservationDate(event.target.value)} /></label>
+              <button type="submit">Aplicar fecha</button>
+            </form>
+          )}
+          <p>Fuente externa: la cobertura puede contener nubes, vacíos y errores. No se afirma una observación en vivo.</p>
+          {earthEvidence === 'error' && <button type="button" onClick={() => { setEarthEvidence('loading'); setEarthRetry(value => value + 1); }}>Reintentar capa</button>}
+        </div>
+      )}
       <div className={`gps4d-toolbar ${navigationActive ? 'gps4d-nav-hidden' : ''}`}>
         <div className="gps4d-search">
           <input
@@ -842,10 +927,10 @@ export function Gps4DPage() {
             </div>
           )}
           {engineState === 'ready' && (
-            <div className={`gps4d-layer-status ${layerState}`} role="status">
-              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'} {layerState === 'error' ? '×' : '✓'}</strong>
-              <span>{layerMessage}</span>
-              {layerState === 'error' && <button type="button" onClick={() => {
+            <div className={`gps4d-layer-status ${earthRasterActive ? 'earth-raster-status' : ''} ${earthRasterActive ? earthEvidence === 'tile-loaded' ? 'ready' : earthEvidence : layerState}`} role="status">
+              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'}</strong>
+              <span>{earthRasterActive ? earthEvidence === 'tile-loaded' ? 'Tesela cargada y ciclo de render terminado; cobertura no certificada.' : earthEvidence === 'error' ? 'Capa externa no verificada: error o tiempo de espera agotado.' : 'Esperando evidencia de teselas…' : layerMessage}</span>
+              {(earthRasterActive ? earthEvidence === 'error' : layerState === 'error') && <button type="button" onClick={() => {
                 setPhotorealistic3D(false);
                 setViewMode(viewMode === 'street' ? 'satellite' : 'street');
               }}>Usar otra capa</button>}
