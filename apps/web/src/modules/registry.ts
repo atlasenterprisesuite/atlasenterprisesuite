@@ -370,6 +370,17 @@ export const ATLAS_MODULES: readonly AtlasModuleDefinition[] = [
     showInNavigation: true
   },
   {
+    id: 'travel',
+    title: 'ATLAS Travel & Stay',
+    navLabel: 'Travel & Stay',
+    area: 'Mobility',
+    route: '/travel',
+    readiness: 'external-gated',
+    requiresAuth: true,
+    description: 'Local trip planning, user-entered estimates, external searches and tentative itinerary exports. Booking and payments are not connected.',
+    showInNavigation: true
+  },
+  {
     id: 'ride',
     title: 'ATLAS Ride',
     navLabel: 'Ride',
