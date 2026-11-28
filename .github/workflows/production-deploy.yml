@@ -191,13 +191,16 @@ jobs:
           if [ ! -f .tmp/earth-browser/verification.json ]; then
             printf '{"ok":false,"failure":"Browser report unavailable"}\n' > .tmp/earth-browser/verification.json
           fi
-          (cd .tmp/earth-browser && find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && sha256sum -c SHA256SUMS)
+          # Hash a stable snapshot, never a log still writable by the Vite process.
+          mkdir -p .tmp/earth-browser-snapshot
+          cp -a .tmp/earth-browser/. .tmp/earth-browser-snapshot/
+          (cd .tmp/earth-browser-snapshot && find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && sha256sum -c SHA256SUMS)
       - name: Upload Earth browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: earth-browser-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
-          path: .tmp/earth-browser/
+          path: .tmp/earth-browser-snapshot/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
