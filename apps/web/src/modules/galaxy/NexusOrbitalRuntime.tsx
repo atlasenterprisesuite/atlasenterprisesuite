@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import type { GalaxyNodeView } from './galaxyModel';
 import { orbitalPositions, projectOrbitalPoint, type ProjectedPoint } from './orbitalRuntime';
 import { materialAt, materialForNode, type PlanetMaterial } from './planetarySurface';
-import { cameraLight, directVisibility, shadeSurface, atmosphericGlow, type LightVector } from './stellarLighting';
+import { cameraLight, directVisibility, shadeSurface, type LightVector } from './stellarLighting';
+import { integrateAtmosphere } from './volumetricAtmosphere';
 import './nexusOrbitalRuntime.css';
 
 type Hit = ProjectedPoint & { id: string };
 
 function paintSphere(ctx: CanvasRenderingContext2D, p: ProjectedPoint, kind: PlanetMaterial, surface: HTMLCanvasElement, seconds: number, light: LightVector, visibility: number) {
   const radius = Math.max(2, p.radius);
-  const n = Math.min(144, Math.max(24, Math.ceil(radius * 2)));
+  const atmosphere = kind === 'ocean' ? 1 : kind === 'gas' ? 0.65 : kind === 'ice' ? 0.35 : kind === 'desert' ? 0.2 : 0;
+  const extent = atmosphere ? 1.12 : 1;
+  // Bound CPU ray work independently of screen DPR and camera zoom.
+  const n = Math.min(atmosphere ? 72 : 144, Math.max(24, Math.ceil(radius * 2 * extent)));
   surface.width = n;
   surface.height = n;
   const brush = surface.getContext('2d');
@@ -17,21 +21,22 @@ function paintSphere(ctx: CanvasRenderingContext2D, p: ProjectedPoint, kind: Pla
   const pixels = brush.createImageData(n, n);
   const spin = seconds * 0.035;
   const cs = Math.cos(spin), sn = Math.sin(spin);
-  const atmosphere = kind === 'ocean' ? 1 : kind === 'gas' ? 0.65 : kind === 'ice' ? 0.35 : kind === 'desert' ? 0.2 : 0;
-  const tint = kind === 'desert' ? [185,120,65] : [75,145,255];
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-    const x = (2 * i + 1) / n - 1, y = (2 * j + 1) / n - 1;
+    const x = ((2 * i + 1) / n - 1) * extent, y = ((2 * j + 1) / n - 1) * extent;
     const rr = x * x + y * y;
-    if (rr >= 1) continue;
-    const z = Math.sqrt(1 - rr);
-    const base = materialAt(kind, x * cs + z * sn, y, z * cs - x * sn);
-    const normal = {x,y,z};
-    const shaded = shadeSurface(base, normal, light, visibility, kind === 'star');
-    const sunCos = Math.max(-1, Math.min(1, x * light.x + y * light.y + z * light.z));
-    const scattering = atmosphere * atmosphericGlow(z, sunCos, visibility);
+    if (rr >= extent * extent) continue;
     const k = (j * n + i) * 4;
-    for (let c = 0; c < 3; c++) pixels.data[k + c] = Math.min(255, shaded[c] + tint[c] * scattering * 0.65);
-    pixels.data[k + 3] = Math.min(255, (1 - Math.sqrt(rr)) * n * 255);
+    const air = atmosphere ? integrateAtmosphere(x, y, light, atmosphere, visibility) : null;
+    if (rr < 1) {
+      const z = Math.sqrt(1 - rr);
+      const base = materialAt(kind, x * cs + z * sn, y, z * cs - x * sn);
+      const shaded = shadeSurface(base, {x,y,z}, light, visibility, kind === 'star');
+      for (let c = 0; c < 3; c++) pixels.data[k + c] = Math.min(255, shaded[c] * (air?.transmission[c] ?? 1) + 255 * (air?.radiance[c] ?? 0));
+      pixels.data[k + 3] = atmosphere ? 255 : Math.min(255, (1 - Math.sqrt(rr)) * n * 255);
+    } else if (air && air.opacity > 0) {
+      for (let c = 0; c < 3; c++) pixels.data[k + c] = Math.min(255, 255 * air.radiance[c] / air.opacity);
+      pixels.data[k + 3] = 255 * air.opacity;
+    }
   }
   brush.putImageData(pixels, 0, 0);
   if (kind === 'star') {
@@ -41,7 +46,7 @@ function paintSphere(ctx: CanvasRenderingContext2D, p: ProjectedPoint, kind: Pla
     ctx.fillStyle = glow;
     ctx.fillRect(p.x - radius * 2.6, p.y - radius * 2.6, radius * 5.2, radius * 5.2);
   }
-  ctx.drawImage(surface, p.x - radius, p.y - radius, radius * 2, radius * 2);
+  ctx.drawImage(surface, p.x - radius * extent, p.y - radius * extent, radius * 2 * extent, radius * 2 * extent);
 }
 
 export function NexusOrbitalRuntime({ nodes, onOpen }: { nodes: GalaxyNodeView[]; onOpen: (node: GalaxyNodeView) => void }) {
