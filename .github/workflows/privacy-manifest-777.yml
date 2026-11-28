@@ -1,0 +1,22 @@
+name: Privacy Manifest 777
+on:
+  pull_request:
+    paths:
+      - 'packages/execution/src/privacy-manifest.mjs'
+      - 'tests/node/atlas-privacy-manifest.test.mjs'
+      - '.github/workflows/privacy-manifest-777.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/node/atlas-privacy-manifest.test.mjs
