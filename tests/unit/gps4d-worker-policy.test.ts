@@ -22,4 +22,11 @@ describe('ATLAS GPS browser security boundary', () => {
     expect(worker).toContain('https://tiles.mapterhorn.com');
     expect(worker).toContain("worker-src 'self' blob:");
   });
+  it('permits the exact Earth data origins only in connect-src', () => {
+    const connect = worker.split('\n').find(line => line.includes("connect-src 'self'"));
+    expect(connect).toContain('https://gibs.earthdata.nasa.gov');
+    expect(connect).toContain('https://tiles.arcgis.com');
+    expect(connect).not.toContain('https://*.arcgis.com');
+    expect(connect).not.toContain(' https: ');
+  });
 });
