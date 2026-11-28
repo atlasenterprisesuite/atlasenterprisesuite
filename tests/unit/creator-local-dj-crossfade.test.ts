@@ -75,4 +75,59 @@ describe('ATLAS Local DJ crossfade playback lifecycle', () => {
     await pending;
     expect(report).not.toHaveBeenCalled();
   });
+
+  it('pauses the pending successor immediately on stop and ignores its late resolution', async () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const report = vi.fn();
+    const session = new LocalCrossfadeSession(tracks, 6, report);
+    let resolveNext: () => void = () => {};
+    vi.spyOn(StubAudio.prototype, 'play')
+      .mockResolvedValueOnce(undefined)
+      .mockImplementationOnce(() => new Promise<void>(resolve => { resolveNext = resolve; }));
+    try {
+      await session.start();
+      const pending = session.next();
+      const successor = StubAudio.created[1];
+      session.stop();
+      expect(successor.pause).toHaveBeenCalled();
+      const calls = report.mock.calls.length;
+      resolveNext();
+      await pending;
+      expect(report.mock.calls).toHaveLength(calls);
+    } finally { session.stop(); resolveNext(); }
+  });
+
+  it('retains the actual final track index when reporting completion', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Audio', StubAudio);
+    const report = vi.fn();
+    const session = new LocalCrossfadeSession(tracks, 6, report);
+    try {
+      await session.start();
+      StubAudio.created[0].ended = true;
+      await session.next();
+      StubAudio.created[1].ended = true;
+      vi.advanceTimersByTime(100);
+      expect(report).toHaveBeenLastCalledWith(1, 'idle', 'Local mix finished.');
+    } finally { session.stop(); vi.useRealTimers(); }
+  });
+
+  it('ignores a late rejected play from an earlier start after restarting the session', async () => {
+    vi.stubGlobal('Audio', StubAudio);
+    const report = vi.fn();
+    const session = new LocalCrossfadeSession(tracks, 6, report);
+    let rejectFirst: (error: Error) => void = () => {};
+    vi.spyOn(StubAudio.prototype, 'play')
+      .mockImplementationOnce(() => new Promise<void>((_resolve, reject) => { rejectFirst = reject; }))
+      .mockResolvedValueOnce(undefined);
+    try {
+      const first = session.start();
+      await session.start();
+      rejectFirst(new Error('stale playback'));
+      await first;
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report).toHaveBeenLastCalledWith(0, 'playing', expect.any(String));
+      expect(StubAudio.created[1].pause).not.toHaveBeenCalled();
+    } finally { session.stop(); }
+  });
 });
