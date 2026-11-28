@@ -76,3 +76,27 @@ describe('privacy policy runtime input must fail closed (777)',()=>{
     }
   });
 });
+
+describe('privacy preflight uses an internally consistent decision snapshot',()=>{
+  it('does not turn a denied action into a candidate during asynchronous hashing',async()=>{
+    const f=await fixture();
+    f.policy.action.mutation=true;
+    const pending=evaluateAtlasPrivacyPreflight(f);
+    f.policy.action.mutation=false;
+    const result=await pending;
+    expect(result.status).toBe('blocked');
+    expect(result.authorization).toBe('not_granted');
+  });
+  it('rejects non-string permissions before canonical normalization',async()=>{
+    const f=await fixture();
+    const context={...f.context,permissions:[{toString:()=> 'execution.read'}] as unknown as string[]};
+    expect((await evaluateAtlasPrivacyPreflight({...f,context})).status).toBe('blocked');
+  });
+  it('rejects non-string session and identity fields',async()=>{
+    const f=await fixture();
+    for(const field of ['sessionId','userId','tenantId','organizationId','requestId'] as const){
+      const context={...f.context,[field]:{toString:()=>f.context[field]}} as unknown as typeof f.context;
+      expect((await evaluateAtlasPrivacyPreflight({...f,context})).status).toBe('blocked');
+    }
+  });
+});
