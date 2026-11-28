@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { readSharedGpsPoint, readTravelDestination } from './earthEntry';
-import { terrainDemSource } from './earthSources';
+import { terrainDemSource, earthRasterStyle, hasLoadedEarthTile } from './earthSources';
 import {
   calculateGpsRoute,
   deleteGpsPlace,
@@ -144,7 +144,11 @@ export function Gps4DPage() {
   const [locationSourceKind, setLocationSourceKind] = useState<NavigationLocationSourceKind>('browser-geolocation');
   const [navigationFixSource, setNavigationFixSource] = useState<'gps' | 'route-snap'>('gps');
   const [navigationConfidence, setNavigationConfidence] = useState(0);
-  const [viewMode, setViewMode] = useState<GpsViewMode | 'globe'>('street');
+  const [viewMode, setViewMode] = useState<GpsViewMode | 'globe' | 'earth-satellite' | 'bathymetry'>('street');
+  const [observationDate, setObservationDate] = useState('2025-06-01');
+  const [draftObservationDate, setDraftObservationDate] = useState('2025-06-01');
+  const [earthRetry, setEarthRetry] = useState(0);
+  const [earthEvidence, setEarthEvidence] = useState<'loading' | 'tile-loaded' | 'error'>('loading');
   const [current, setCurrent] = useState<LivePosition | null>(null);
   const [selected, setSelected] = useState<GpsPoint | null>(() => readSharedGpsPoint(location.search));
   const [query, setQuery] = useState(() => readTravelDestination(location.state));
@@ -165,6 +169,7 @@ export function Gps4DPage() {
   const [arrivalState, setArrivalState] = useState<'idle' | 'approaching' | 'arrived'>('idle');
   const [persistenceState, setPersistenceState] = useState<'loading' | 'ready' | 'blocked'>('loading');
   const [photorealistic3D, setPhotorealistic3D] = useState(false);
+  const earthRasterActive = !photorealistic3D && (viewMode === 'earth-satellite' || viewMode === 'bathymetry');
   const googleMapTilesKey = String((import.meta as any).env?.VITE_ATLAS_GOOGLE_MAP_TILES_KEY || '');
   const photorealisticConfigured = googleMapTilesKey.trim().length > 0;
   const indoorBuilding = useMemo<IndoorBuilding | null>(() => {
@@ -318,10 +323,30 @@ export function Gps4DPage() {
     if (!map.current || photorealistic3D || engineState !== 'ready') return;
     const instance = map.current;
     let cancelled = false;
+    const raster = viewMode === 'earth-satellite' || viewMode === 'bathymetry';
+    const rasterKind = viewMode === 'bathymetry' ? 'bathymetry' : 'satellite';
+    let loaded = false;
+    let failed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onTile = (event: unknown) => {
+      if (cancelled || !raster || failed || !hasLoadedEarthTile(event)) return;
+      loaded = true;
+    };
+    const onIdle = () => {
+      if (cancelled || !raster || failed || !loaded) return;
+      setEarthEvidence('tile-loaded');
+      if (timer !== undefined) clearTimeout(timer);
+    };
+    const onRasterError = () => {
+      if (cancelled || !raster) return;
+      failed = true;
+      setEarthEvidence('error');
+      if (timer !== undefined) clearTimeout(timer);
+    };
     const applyProjection = () => {
       if (cancelled) return;
       try {
-        if (viewMode === 'globe' || viewMode === 'terrain3d') {
+        if (viewMode === 'globe' || viewMode === 'terrain3d' || raster) {
           if (typeof instance.setProjection !== 'function') throw new Error('Proyección de globo no disponible');
           instance.setProjection({ type: 'globe' });
           if (viewMode === 'terrain3d') {
@@ -337,8 +362,9 @@ export function Gps4DPage() {
           instance.setPitch(0);
         }
         // A previous road route must not override the explicit world-scale camera.
-        renderRouteOn(instance, activeRouteRef.current, 'atlas-overview-route', viewMode !== 'globe');
+        renderRouteOn(instance, activeRouteRef.current, 'atlas-overview-route', viewMode !== 'globe' && !raster);
       } catch (error) {
+        onRasterError();
         setLayerState('error');
         setLayerMessage(error instanceof Error && error.message === 'Proyección de globo no disponible'
           ? error.message : 'La capa seleccionada no respondió.');
@@ -347,15 +373,32 @@ export function Gps4DPage() {
     try {
       setLayerState('loading');
       setLayerMessage(viewMode === 'globe' ? 'Cargando globo Earth…' : viewMode === 'street' ? 'Cargando Street map…' : viewMode === 'satellite' ? 'Cargando satélite…' : 'Cargando 3D…');
+      if (raster) {
+        setEarthEvidence('loading');
+        instance.on('sourcedata', onTile);
+        instance.on('idle', onIdle);
+        instance.on('error', onRasterError);
+        timer = setTimeout(() => { if (!cancelled) onRasterError(); }, 20000);
+      }
       instance.once('style.load', applyProjection);
-      instance.setStyle(viewMode === 'street' || viewMode === 'globe' ? STREET_STYLE : satelliteStyle(viewMode === 'terrain3d'), { diff: false });
+      instance.setStyle(raster ? earthRasterStyle(rasterKind, observationDate) : viewMode === 'street' || viewMode === 'globe' ? STREET_STYLE : satelliteStyle(viewMode === 'terrain3d'), { diff: false });
     } catch {
+      onRasterError();
       instance.off('style.load', applyProjection);
       setLayerState('error');
       setLayerMessage('La capa seleccionada no respondió.');
     }
-    return () => { cancelled = true; instance.off('style.load', applyProjection); };
-  }, [viewMode, photorealistic3D, engineState]);
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) clearTimeout(timer);
+      instance.off('style.load', applyProjection);
+      if (raster) {
+        instance.off('sourcedata', onTile);
+        instance.off('idle', onIdle);
+        instance.off('error', onRasterError);
+      }
+    };
+  }, [viewMode, photorealistic3D, engineState, observationDate, earthRetry]);
 
   useEffect(() => {
     renderRoute(activeRoute);
@@ -725,11 +768,13 @@ export function Gps4DPage() {
 
   const mapModeDetail = useMemo(() => {
     if (photorealistic3D) return 'Google Photorealistic 3D Tiles · external-gated';
+    if (viewMode === 'earth-satellite') return 'NASA GIBS / NOAA-20 VIIRS · observación ' + observationDate;
+    if (viewMode === 'bathymetry') return 'GEBCO / NOAA NCEI · relieve sombreado, no profundidad medida';
     if (viewMode === 'globe') return 'OpenFreeMap + OpenStreetMap · Earth globe';
     if (viewMode === 'street') return 'OpenFreeMap + OpenStreetMap';
     if (viewMode === 'satellite') return 'USGS The National Map imagery · U.S. coverage';
     return 'USGS imagery + Mapterhorn elevation · 3D globe';
-  }, [viewMode, photorealistic3D]);
+  }, [viewMode, photorealistic3D, observationDate]);
 
   return (
     <section className="gps4d-page">
@@ -775,6 +820,8 @@ export function Gps4DPage() {
         >
           Photorealistic
         </button>
+        <button type="button" disabled={engineState !== 'ready'} aria-pressed={earthRasterActive && viewMode === 'earth-satellite'} onClick={() => { setEarthEvidence('loading'); setPhotorealistic3D(false); setViewMode('earth-satellite'); setEarthRetry(value => value + 1); }}>Satélite global</button>
+        <button type="button" disabled={engineState !== 'ready'} aria-pressed={earthRasterActive && viewMode === 'bathymetry'} onClick={() => { setEarthEvidence('loading'); setPhotorealistic3D(false); setViewMode('bathymetry'); setEarthRetry(value => value + 1); }}>Océanos GEBCO</button>
         <span>{mapModeDetail}</span>
         {!photorealistic3D && viewMode === 'globe' && (
           <>
@@ -784,6 +831,25 @@ export function Gps4DPage() {
         )}
       </nav>
 
+      {earthRasterActive && !navigationActive && (
+        <div className="notice">
+          {viewMode === 'earth-satellite' && (
+            <form onSubmit={event => {
+              event.preventDefault();
+              try { earthRasterStyle('satellite', draftObservationDate); }
+              catch { return; }
+              setEarthEvidence('loading');
+              setObservationDate(draftObservationDate);
+              setEarthRetry(value => value + 1);
+            }}>
+              <label>Fecha de observación <input type="date" required value={draftObservationDate} max={new Date().toISOString().slice(0,10)} onChange={event => setDraftObservationDate(event.target.value)} /></label>
+              <button type="submit">Aplicar fecha</button>
+            </form>
+          )}
+          <p>Fuente externa: la cobertura puede contener nubes, vacíos y errores. No se afirma una observación en vivo.</p>
+          {earthEvidence === 'error' && <button type="button" onClick={() => { setEarthEvidence('loading'); setEarthRetry(value => value + 1); }}>Reintentar capa</button>}
+        </div>
+      )}
       <div className={`gps4d-toolbar ${navigationActive ? 'gps4d-nav-hidden' : ''}`}>
         <div className="gps4d-search">
           <input
@@ -861,10 +927,10 @@ export function Gps4DPage() {
             </div>
           )}
           {engineState === 'ready' && (
-            <div className={`gps4d-layer-status ${layerState}`} role="status">
-              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'} {layerState === 'error' ? '×' : '✓'}</strong>
-              <span>{layerMessage}</span>
-              {layerState === 'error' && <button type="button" onClick={() => {
+            <div className={`gps4d-layer-status ${earthRasterActive ? earthEvidence === 'tile-loaded' ? 'ready' : earthEvidence : layerState}`} role="status">
+              <strong>{photorealistic3D ? 'Cesium' : 'MapLibre'}</strong>
+              <span>{earthRasterActive ? earthEvidence === 'tile-loaded' ? 'Tesela cargada y ciclo de render terminado; cobertura no certificada.' : earthEvidence === 'error' ? 'Capa externa no verificada: error o tiempo de espera agotado.' : 'Esperando evidencia de teselas…' : layerMessage}</span>
+              {(earthRasterActive ? earthEvidence === 'error' : layerState === 'error') && <button type="button" onClick={() => {
                 setPhotorealistic3D(false);
                 setViewMode(viewMode === 'street' ? 'satellite' : 'street');
               }}>Usar otra capa</button>}
