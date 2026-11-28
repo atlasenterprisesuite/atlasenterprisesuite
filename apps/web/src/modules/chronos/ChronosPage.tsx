@@ -5,6 +5,25 @@ import { ATLAS_SESSION_EVENT } from '../../lib/atlasSession';
 import { ATLAS_ACCESSIBILITY_PROFILE_EVENT, loadAccessibilityProfile, loadAccessibilityProfileRemote, resolveAccessibilityUserId, saveAccessibilityProfile, syncAccessibilityProfileRemote } from '../../services/accessibilityProfile';
 import type { AccessibilityProfile } from '../../types/accessibility';
 import './chronos.css';
+import { disciplines, planetarySources, buildObservationLinks, type Projection } from './planetaryObservation';
+function PlanetaryObservationPanel(){
+ const [discipline,setDiscipline]=useState(disciplines[0].id);
+ const [date,setDate]=useState('2026-11-26');
+ const [projection,setProjection]=useState<Projection>('antarctic');
+ const links=buildObservationLinks(date,projection);
+ const selected=disciplines.find(d=>d.id===discipline);
+ return <section className="chronos-panel" aria-labelledby="planetary-observation-heading">
+  <h2 id="planetary-observation-heading">Observación planetaria · Biblioteca antártica</h2>
+  <p>24 disciplinas. Referencias documentales, sin descarga ni certificación científica.</p>
+  <label>Disciplina antártica<select value={discipline} onChange={e=>setDiscipline(e.target.value)}>{disciplines.map(d=><option key={d.id} value={d.id}>{d.id} · {d.title}</option>)}</select></label>
+  <ul>{planetarySources.filter(s=>selected?.sourceIds.includes(s.id)).map(s=><li key={s.id}><a href={s.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{s.title}</a> · {s.kind} · referencia sin auditar</li>)}</ul>
+  <label>Fecha de observación<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
+  <label>Proyección<select value={projection} onChange={e=>setProjection(e.target.value as Projection)}><option value="antarctic">Antártida</option><option value="arctic">Ártico</option><option value="geographic">Geográfica</option></select></label>
+  {links?<ul><li><a href={links.worldview} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Abrir observación en NASA Worldview</a></li><li><a href={links.gibs} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Catálogo GIBS XML</a></li><li><a href={links.bedmachine} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">BedMachine V4 (modelo histórico independiente de la fecha)</a></li></ul>:<p role="alert">Selecciona una fecha y proyección válidas.</p>}
+  <p>El acceso a fuentes externas es voluntario. Los enlaces no prueban disponibilidad de imágenes. GPS 4D conserva su límite de identidad y permisos.</p><Link to="/gps">Abrir GPS 4D</Link>
+ </section>;
+}
+
 const base='/chronos';
 const sections=[['','Inicio'],['explore','Exploración'],['research','Investigación'],['evidence','Evidencias'],['timeline','Cronología'],['review','777 Review']];
 const images=[
@@ -109,6 +128,7 @@ export function ChronosPage(){
     <p className="chronos-review-pending">Revisión ATLAS pendiente</p>
    </article>)}</div>:<p className="chronos-empty">No hay fuentes que coincidan con estos filtros. Puedes cambiar el tipo o la búsqueda.</p>}
  </section>}
+ {route==='evidence'&&<PlanetaryObservationPanel/>}
  {route==='timeline'&&<section className="chronos-panel"><h2>Cronología universal</h2><p>Fechas aproximadas, no a escala; Ma = millones de años. Las edades desde el Big Bang y las fechas civiles se identifican por separado.</p>{timeline.map(([date,event])=><article key={date}><strong>{date}</strong><p>{event}</p></article>)}</section>}
  {route==='review'&&<section className="chronos-panel"><h2>777 Review</h2><p>0/{p.total} objetivos certificados. No hay certificación de producción.</p>{tasks.map(t=><p key={t.title}>{t.done?'Preliminar':'Pendiente'} · {t.title}</p>)}</section>}
  {!['','explore','evidence','timeline','review','research'].includes(active)&&<section className="chronos-panel"><h2>Ruta no encontrada</h2><Link to={base}>Regresar a inicio</Link></section>}
