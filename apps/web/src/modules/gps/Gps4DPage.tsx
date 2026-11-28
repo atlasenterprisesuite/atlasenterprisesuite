@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { readSharedGpsPoint, readTravelDestination } from './earthEntry';
 import {
   calculateGpsRoute,
   deleteGpsPlace,
@@ -113,6 +115,7 @@ function maneuverSymbol(step: GpsRouteStep | null) {
 }
 
 export function Gps4DPage() {
+  const location = useLocation();
   const mapNode = useRef<HTMLDivElement | null>(null);
   const driveMapNode = useRef<HTMLDivElement | null>(null);
   const map = useRef<any>(null);
@@ -141,8 +144,8 @@ export function Gps4DPage() {
   const [navigationConfidence, setNavigationConfidence] = useState(0);
   const [viewMode, setViewMode] = useState<GpsViewMode>('street');
   const [current, setCurrent] = useState<LivePosition | null>(null);
-  const [selected, setSelected] = useState<GpsPoint | null>(null);
-  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<GpsPoint | null>(() => readSharedGpsPoint(location.search));
+  const [query, setQuery] = useState(() => readTravelDestination(location.state));
   const [searchResults, setSearchResults] = useState<GpsPoint[]>([]);
   const [searchState, setSearchState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [routes, setRoutes] = useState<GpsRoute[]>([]);
@@ -193,8 +196,8 @@ export function Gps4DPage() {
       const instance = new module.Map({
         container: mapNode.current,
         style: STREET_STYLE,
-        center: ORLANDO,
-        zoom: 11.5,
+        center: selectedRef.current ? [selectedRef.current.lon, selectedRef.current.lat] : ORLANDO,
+        zoom: selectedRef.current ? 14 : 11.5,
         pitch: 0,
         bearing: 0,
         maxPitch: 85,
@@ -282,13 +285,14 @@ export function Gps4DPage() {
   }, [navigationActive]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const lat = Number(params.get('lat'));
-    const lon = Number(params.get('lon'));
-    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-      setSelected({ lat, lon, label: params.get('label') || 'Destino compartido' });
+    const shared = readSharedGpsPoint(location.search);
+    const destination = readTravelDestination(location.state);
+    if (shared) {
+      setSelected(shared);
+      map.current?.easeTo({ center: [shared.lon, shared.lat], zoom: 14, duration: 0 });
     }
-  }, []);
+    if (destination) setQuery(destination);
+  }, [location.key, location.search, location.state]);
 
   useEffect(() => {
     listGpsSavedPlaces()
@@ -306,7 +310,7 @@ export function Gps4DPage() {
       .setLngLat([selected.lon, selected.lat])
       .setPopup(new maplibre.current.Popup({ offset: 22 }).setText(selected.label))
       .addTo(map.current);
-  }, [selected]);
+  }, [selected, engineState]);
 
   useEffect(() => {
     if (!map.current) return;
